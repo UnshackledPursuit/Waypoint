@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct AddPortalView: View {
     
@@ -18,7 +19,6 @@ struct AddPortalView: View {
     
     @State private var name: String = ""
     @State private var url: String = ""
-    @State private var isFavorite: Bool = false
     @State private var isPinned: Bool = false
     
     private var isEditing: Bool {
@@ -39,7 +39,6 @@ struct AddPortalView: View {
         if let portal = editingPortal {
             _name = State(initialValue: portal.name)
             _url = State(initialValue: portal.url)
-            _isFavorite = State(initialValue: portal.isFavorite)
             _isPinned = State(initialValue: portal.isPinned)
         }
     }
@@ -51,16 +50,23 @@ struct AddPortalView: View {
             Form {
                 Section {
                     TextField("Name", text: $name, prompt: Text("YouTube"))
-                    
-                    TextField("URL", text: $url, prompt: Text("youtube.com"))
-                        .textContentType(.URL)
-                        .keyboardType(.URL)
-                        .autocapitalization(.none)
-                        .autocorrectionDisabled()
-                    
+
+                    HStack {
+                        TextField("URL", text: $url, prompt: Text("youtube.com"))
+                            .textContentType(.URL)
+                            .keyboardType(.URL)
+                            .autocapitalization(.none)
+                            .autocorrectionDisabled()
+
+                        Button {
+                            pasteFromClipboard()
+                        } label: {
+                            Image(systemName: "doc.on.clipboard")
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
                     Toggle("Pin to Top", isOn: $isPinned)
-                    
-                    Toggle("Favorite", isOn: $isFavorite)
                 }
                 
                 Section {
@@ -127,18 +133,28 @@ struct AddPortalView: View {
                     .foregroundStyle(.blue)
                     .font(.caption)
             }
-            
-            if isFavorite {
-                Image(systemName: "star.fill")
-                    .foregroundStyle(.yellow)
-                    .font(.caption)
-            }
         }
         .padding(.vertical, 8)
     }
     
     // MARK: - Actions
-    
+
+    private func pasteFromClipboard() {
+        #if os(visionOS) || os(iOS)
+        if let clipboardString = UIPasteboard.general.string {
+            let trimmed = clipboardString.trimmingCharacters(in: .whitespacesAndNewlines)
+            url = trimmed
+
+            // Auto-fill name if empty
+            if name.isEmpty {
+                if let urlObj = URL(string: trimmed) ?? URL(string: "https://" + trimmed) {
+                    name = DropService.extractSmartName(from: urlObj)
+                }
+            }
+        }
+        #endif
+    }
+
     private func savePortal() {
         let cleanedName = name.trimmingCharacters(in: .whitespaces)
         var cleanedURL = url.trimmingCharacters(in: .whitespaces)
@@ -175,7 +191,6 @@ struct AddPortalView: View {
             var updatedPortal = editingPortal
             updatedPortal.name = cleanedName
             updatedPortal.url = cleanedURL
-            updatedPortal.isFavorite = isFavorite
             updatedPortal.isPinned = isPinned
             
             portalManager.update(updatedPortal)
@@ -185,7 +200,6 @@ struct AddPortalView: View {
             let newPortal = Portal(
                 name: cleanedName,
                 url: cleanedURL,
-                isFavorite: isFavorite,
                 isPinned: isPinned
             )
             

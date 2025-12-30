@@ -12,14 +12,34 @@ import Foundation
 enum PortalType: String, Codable {
     case web        // https://, http://
     case file       // file:// (copied to app storage)
+    case usdz       // .usdz 3D files
+    case folder     // Folder references
     case icloud     // icloud.com URLs
     case app        // Custom schemes (notion://, etc.)
-    
+
     static func detect(from url: URL) -> PortalType {
+        // Check for USDZ files first
+        if url.pathExtension.lowercased() == "usdz" { return .usdz }
+
+        // Check for folders
+        if url.hasDirectoryPath { return .folder }
+
+        // Check scheme-based types
         if url.scheme == "file" { return .file }
         if url.host?.contains("icloud.com") == true { return .icloud }
         if url.scheme == "http" || url.scheme == "https" { return .web }
         return .app
+    }
+
+    var iconName: String {
+        switch self {
+        case .web: return "globe"
+        case .file: return "doc.fill"
+        case .usdz: return "cube.fill"
+        case .folder: return "folder.fill"
+        case .icloud: return "icloud.fill"
+        case .app: return "app.fill"
+        }
     }
 }
 
@@ -37,6 +57,7 @@ struct Portal: Identifiable, Codable, Hashable {
     var lastOpened: Date?
     var isFavorite: Bool
     var isPinned: Bool              // Pin to top of list
+    var sortIndex: Int              // For manual ordering
     var tags: [String]              // For future organization
     
     // Computed property for display
@@ -58,12 +79,13 @@ struct Portal: Identifiable, Codable, Hashable {
         lastOpened: Date? = nil,
         isFavorite: Bool = false,
         isPinned: Bool = false,
+        sortIndex: Int = Int.max,  // New portals go to end
         tags: [String] = []
     ) {
         self.id = id
         self.name = name
         self.url = url
-        
+
         // Auto-detect type if not provided
         if let type = type {
             self.type = type
@@ -72,7 +94,7 @@ struct Portal: Identifiable, Codable, Hashable {
         } else {
             self.type = .web // Fallback
         }
-        
+
         self.thumbnailData = thumbnailData
         self.customThumbnail = customThumbnail
         self.useCustomThumbnail = useCustomThumbnail
@@ -80,6 +102,7 @@ struct Portal: Identifiable, Codable, Hashable {
         self.lastOpened = lastOpened
         self.isFavorite = isFavorite
         self.isPinned = isPinned
+        self.sortIndex = sortIndex
         self.tags = tags
     }
 }

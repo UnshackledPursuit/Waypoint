@@ -7,6 +7,7 @@
 
 import Foundation
 import Observation
+import SwiftUI
 
 @Observable
 class PortalManager {
@@ -29,6 +30,12 @@ class PortalManager {
     func add(_ portal: Portal) {
         portals.append(portal)
         save()
+    }
+
+    func addMultiple(_ newPortals: [Portal]) {
+        portals.append(contentsOf: newPortals)
+        save()
+        print("✅ Added \(newPortals.count) portals")
     }
     
     func update(_ portal: Portal) {
@@ -62,6 +69,22 @@ class PortalManager {
             portals[index].lastOpened = Date()
             save()
         }
+    }
+
+    func movePortals(from source: IndexSet, to destination: Int, in sortedPortals: [Portal]) {
+        // Get the IDs being moved
+        var reorderedIDs = sortedPortals.map { $0.id }
+        reorderedIDs.move(fromOffsets: source, toOffset: destination)
+
+        // Update sortIndex for all portals based on new order
+        for (index, id) in reorderedIDs.enumerated() {
+            if let portalIndex = portals.firstIndex(where: { $0.id == id }) {
+                portals[portalIndex].sortIndex = index
+            }
+        }
+
+        save()
+        print("📦 Reordered portals")
     }
     
     // MARK: - Persistence
