@@ -17,7 +17,7 @@
 
 ---
 
-## Step 1 — Drag & Drop Upgrade (required)
+## Step 1 — Drag & Drop Upgrade (required) ✅ Completed
 1. Replace `.dropDestination(for: String.self)` with provider-based `.onDrop(of:...)`
 2. Add `DropParser.swift` (async provider extraction)
 3. Route extracted URLs → existing `handleDroppedURLs(_:)`
@@ -26,6 +26,7 @@
    - Files PDF drop works
 
 **Output:** Drag/drop becomes “foundational” without breaking Quick Paste.
+**Status:** Completed (provider-based URL + fileURL + text drop; DropParser in place)
 
 ---
 

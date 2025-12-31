@@ -39,6 +39,7 @@ and all confirmed implementation discussions.
   - Accepts: public.url, public.file-url, public.text
   - Deduplication logic
   - Batch confirmation UX
+  - Status: Implemented (Phase 1)
 - Clipboard fallback always available
 
 ---
