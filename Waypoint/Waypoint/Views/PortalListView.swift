@@ -41,6 +41,10 @@ struct PortalListView: View {
     // Sorting and filtering
     @State private var sortOrder: SortOrder = .dateAdded
     @State private var filterOption: FilterOption = .all
+
+    // Open failure feedback
+    @State private var showOpenFailed = false
+    @State private var openFailedMessage = "Couldn't open. Check iCloud share permissions."
     
     enum SortOrder: String, CaseIterable {
         case custom = "Custom"
@@ -66,32 +70,19 @@ struct PortalListView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if portalManager.portals.isEmpty {
-                    emptyStateView
-                        .dropDestination(for: String.self) { items, location in
-                            handleDroppedStrings(items)
-                            return true
-                        } isTargeted: { targeted in
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                isDropTargeted = targeted
-                            }
-                        }
-                } else {
-                    portalListView
-                        .dropDestination(for: String.self) { items, location in
-                            handleDroppedStrings(items)
-                            return true
-                        } isTargeted: { targeted in
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                isDropTargeted = targeted
-                            }
-                        }
+        ZStack {
+            NavigationStack {
+                Group {
+                    if portalManager.portals.isEmpty {
+                        emptyStateView
+                    } else {
+                        portalListView
+                    }
                 }
-            }
-            .navigationTitle("")
-            .toolbar {
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .navigationTitle("")
+                .toolbar {
                 // Quick Add URL (first)
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -188,47 +179,73 @@ struct PortalListView: View {
             .sheet(isPresented: $showBatchConfirmation) {
                 batchConfirmationView
             }
-            // Drop zone visual overlay
-            .overlay {
-                if isDropTargeted {
-                    dropZoneOverlay
+                // Success toast overlay
+                .overlay(alignment: .bottom) {
+                    if showDropSuccess {
+                        dropSuccessToast
+                    }
+                }
+                // Constellation assignment toast
+                .overlay(alignment: .bottom) {
+                    if showConstellationAssigned {
+                        constellationAssignedToast
+                    }
+                }
+                // Create constellation sheet
+                .sheet(isPresented: $showCreateConstellation) {
+                    CreateConstellationView(initialPortal: portalForNewConstellation)
+                }
+                // Quick Add alert
+                .alert("Quick Add", isPresented: $showQuickAdd) {
+                    TextField("URL", text: $quickAddURL)
+                        .textContentType(.URL)
+                    Button("Add") {
+                        quickAddFromURL()
+                    }
+                    Button("Cancel", role: .cancel) {
+                        quickAddURL = ""
+                    }
+                } message: {
+                    Text("Enter a URL to create a portal")
+                }
+                // Quick Paste success toast
+                .overlay(alignment: .bottom) {
+                    if showQuickPasteSuccess {
+                        quickPasteSuccessToast
+                    }
+                }
+                // Open failed toast
+                .overlay(alignment: .bottom) {
+                    if showOpenFailed {
+                        openFailedToast
+                    }
                 }
             }
-            // Success toast overlay
-            .overlay(alignment: .bottom) {
-                if showDropSuccess {
-                    dropSuccessToast
+
+            DropInteractionView(
+                allowedTypeIdentifiers: [
+                    UTType.url.identifier,
+                    UTType.fileURL.identifier,
+                    UTType.text.identifier,
+                    UTType.pdf.identifier,
+                    UTType.item.identifier
+                ],
+                onTargetedChange: { targeted in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isDropTargeted = targeted
+                    }
+                },
+                onDrop: { providers in
+                    Task {
+                        let urls = await DropParser.extractURLs(from: providers)
+                        await MainActor.run {
+                            handleDroppedURLs(urls)
+                        }
+                    }
                 }
-            }
-            // Constellation assignment toast
-            .overlay(alignment: .bottom) {
-                if showConstellationAssigned {
-                    constellationAssignedToast
-                }
-            }
-            // Create constellation sheet
-            .sheet(isPresented: $showCreateConstellation) {
-                CreateConstellationView(initialPortal: portalForNewConstellation)
-            }
-            // Quick Add alert
-            .alert("Quick Add", isPresented: $showQuickAdd) {
-                TextField("URL", text: $quickAddURL)
-                    .textContentType(.URL)
-                Button("Add") {
-                    quickAddFromURL()
-                }
-                Button("Cancel", role: .cancel) {
-                    quickAddURL = ""
-                }
-            } message: {
-                Text("Enter a URL to create a portal")
-            }
-            // Quick Paste success toast
-            .overlay(alignment: .bottom) {
-                if showQuickPasteSuccess {
-                    quickPasteSuccessToast
-                }
-            }
+            )
+            .ignoresSafeArea()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -304,6 +321,26 @@ struct PortalListView: View {
             Text("\(lastDropCount) portal\(lastDropCount == 1 ? "" : "s") created")
                 .font(.subheadline)
                 .fontWeight(.medium)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+        .padding(.bottom, 20)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    // MARK: - Open Failed Toast
+
+    private var openFailedToast: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+
+            Text(openFailedMessage)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .lineLimit(2)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -477,32 +514,6 @@ struct PortalListView: View {
 
     // MARK: - Drop Handling
 
-    private func handleDroppedStrings(_ strings: [String]) {
-        // Convert strings to URLs
-        let urls = strings.compactMap { string -> URL? in
-            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            // Try as direct URL
-            if let url = URL(string: trimmed) {
-                return url
-            }
-
-            // Try with https prefix
-            if !trimmed.contains("://") && trimmed.contains(".") {
-                return URL(string: "https://" + trimmed)
-            }
-
-            return nil
-        }
-
-        guard !urls.isEmpty else {
-            print("⚠️ No valid URLs found in dropped strings")
-            return
-        }
-
-        handleDroppedURLs(urls)
-    }
-
     private func handleDroppedURLs(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
 
@@ -541,7 +552,7 @@ struct PortalListView: View {
 
         print("🎯 Created \(newPortals.count) portals via drag & drop")
     }
-    
+
     // MARK: - Portal List
 
     private var portalListView: some View {
@@ -742,23 +753,42 @@ struct PortalListView: View {
             print("❌ Invalid URL: \(portal.url)")
             return
         }
-        
-        // Update last opened timestamp
-        portalManager.updateLastOpened(portal)
-        
+
         // Open URL - system handles window placement
-        #if os(visionOS)
+        #if os(visionOS) || os(iOS)
         UIApplication.shared.open(url) { success in
             if success {
+                // Update last opened timestamp
+                portalManager.updateLastOpened(portal)
                 print("🚀 Opened portal: \(portal.name)")
             } else {
                 print("❌ Failed to open portal: \(portal.name)")
+                showOpenFailedToast()
             }
         }
         #else
-        NSWorkspace.shared.open(url)
-        print("🚀 Opened portal: \(portal.name)")
+        let success = NSWorkspace.shared.open(url)
+        if success {
+            portalManager.updateLastOpened(portal)
+            print("🚀 Opened portal: \(portal.name)")
+        } else {
+            print("❌ Failed to open portal: \(portal.name)")
+            showOpenFailedToast()
+        }
         #endif
+    }
+
+    private func showOpenFailedToast(message: String = "Couldn't open. Check iCloud share permissions.") {
+        openFailedMessage = message
+        withAnimation {
+            showOpenFailed = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            withAnimation {
+                showOpenFailed = false
+            }
+        }
     }
 }
 
