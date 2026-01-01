@@ -14,8 +14,9 @@ struct AddPortalView: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(PortalManager.self) private var portalManager
-    
     let editingPortal: Portal?
+    let focusRequestPortalID: Binding<UUID?>?
+    let dismissMicroActionsPortalID: Binding<UUID?>?
     
     @State private var name: String = ""
     @State private var url: String = ""
@@ -32,8 +33,14 @@ struct AddPortalView: View {
     
     // MARK: - Initialization
     
-    init(editingPortal: Portal? = nil) {
+    init(
+        editingPortal: Portal? = nil,
+        focusRequestPortalID: Binding<UUID?>? = nil,
+        dismissMicroActionsPortalID: Binding<UUID?>? = nil
+    ) {
         self.editingPortal = editingPortal
+        self.focusRequestPortalID = focusRequestPortalID
+        self.dismissMicroActionsPortalID = dismissMicroActionsPortalID
         
         // Initialize state from editing portal if provided
         if let portal = editingPortal {
@@ -47,49 +54,53 @@ struct AddPortalView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Name", text: $name, prompt: Text("YouTube"))
-
-                    HStack {
-                        TextField("URL", text: $url, prompt: Text("youtube.com"))
-                            .textContentType(.URL)
-                            .keyboardType(.URL)
-                            .autocapitalization(.none)
-                            .autocorrectionDisabled()
-
-                        Button {
-                            pasteFromClipboard()
-                        } label: {
-                            Image(systemName: "doc.on.clipboard")
+            formContent
+                .navigationTitle(isEditing ? "Edit Portal" : "Create Portal")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            dismiss()
                         }
-                        .buttonStyle(.bordered)
                     }
+                    
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(isEditing ? "Save" : "Create") {
+                            savePortal()
+                        }
+                        .disabled(!isValid)
+                    }
+                }
+        }
+    }
 
-                    Toggle("Pin to Top", isOn: $isPinned)
+    private var formContent: some View {
+        Form {
+            Section {
+                TextField("Name", text: $name, prompt: Text("YouTube"))
+
+                HStack {
+                    TextField("URL", text: $url, prompt: Text("youtube.com"))
+                        .textContentType(.URL)
+                        .keyboardType(.URL)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+
+                    Button {
+                        pasteFromClipboard()
+                    } label: {
+                        Image(systemName: "doc.on.clipboard")
+                    }
+                    .buttonStyle(.bordered)
                 }
-                
-                Section {
-                    portalPreview
-                } header: {
-                    Text("Preview")
-                }
+
+                Toggle("Pin to Top", isOn: $isPinned)
             }
-            .navigationTitle(isEditing ? "Edit Portal" : "Create Portal")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(isEditing ? "Save" : "Create") {
-                        savePortal()
-                    }
-                    .disabled(!isValid)
-                }
+            
+            Section {
+                portalPreview
+            } header: {
+                Text("Preview")
             }
         }
     }
@@ -194,8 +205,16 @@ struct AddPortalView: View {
             updatedPortal.isPinned = isPinned
             
             portalManager.update(updatedPortal)
+            dismissMicroActionsPortalID?.wrappedValue = updatedPortal.id
             print("✏️ Updated portal: \(cleanedName)")
         } else {
+            if let existingPortal = portalManager.portals.first(where: { URLNormalizer.matches($0.url, cleanedURL) }) {
+                focusRequestPortalID?.wrappedValue = existingPortal.id
+                print("🔁 Portal already exists for this URL")
+                dismiss()
+                return
+            }
+
             // Create new portal
             let newPortal = Portal(
                 name: cleanedName,
@@ -204,6 +223,7 @@ struct AddPortalView: View {
             )
             
             portalManager.add(newPortal)
+            focusRequestPortalID?.wrappedValue = newPortal.id
             print("➕ Created portal: \(cleanedName)")
         }
         
@@ -229,6 +249,7 @@ struct AddPortalView: View {
         
         return cleaned
     }
+
 }
 
 // MARK: - Color Extension
@@ -265,9 +286,11 @@ extension Color {
 #Preview("Create") {
     AddPortalView()
         .environment(PortalManager())
+        .environment(ConstellationManager())
 }
 
 #Preview("Edit") {
     AddPortalView(editingPortal: Portal.sample)
         .environment(PortalManager())
+        .environment(ConstellationManager())
 }

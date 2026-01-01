@@ -45,6 +45,13 @@ struct PortalListView: View {
     // Open failure feedback
     @State private var showOpenFailed = false
     @State private var openFailedMessage = "Couldn't open. Check iCloud share permissions."
+
+    // Micro-actions feedback
+    @State private var lastCreatedPortalID: UUID?
+    @State private var focusRequestPortalID: UUID?
+    @State private var microActionsPortalID: UUID?
+    @State private var microActionsWorkItem: DispatchWorkItem?
+    @State private var dismissMicroActionsPortalID: UUID?
     
     enum SortOrder: String, CaseIterable {
         case custom = "Custom"
@@ -168,13 +175,30 @@ struct PortalListView: View {
                 #endif
             }
             .sheet(isPresented: $showAddPortal) {
-                AddPortalView()
+                AddPortalView(
+                    focusRequestPortalID: $focusRequestPortalID,
+                    dismissMicroActionsPortalID: $dismissMicroActionsPortalID
+                )
             }
             .sheet(item: $portalToEdit) { portal in
-                AddPortalView(editingPortal: portal)
+                AddPortalView(
+                    editingPortal: portal,
+                    focusRequestPortalID: $focusRequestPortalID,
+                    dismissMicroActionsPortalID: $dismissMicroActionsPortalID
+                )
             }
             .sheet(isPresented: $showQuickStart) {
                 QuickStartPortalsView(isFirstTime: true)
+            }
+            .sheet(isPresented: $showQuickAdd) {
+                QuickAddPortalView(
+                    initialURL: quickAddURL,
+                    onCancel: { quickAddURL = "" },
+                    onSubmit: { urlString in
+                        quickAddURL = urlString
+                        quickAddFromURL()
+                    }
+                )
             }
             .sheet(isPresented: $showBatchConfirmation) {
                 batchConfirmationView
@@ -194,19 +218,6 @@ struct PortalListView: View {
                 // Create constellation sheet
                 .sheet(isPresented: $showCreateConstellation) {
                     CreateConstellationView(initialPortal: portalForNewConstellation)
-                }
-                // Quick Add alert
-                .alert("Quick Add", isPresented: $showQuickAdd) {
-                    TextField("URL", text: $quickAddURL)
-                        .textContentType(.URL)
-                    Button("Add") {
-                        quickAddFromURL()
-                    }
-                    Button("Cancel", role: .cancel) {
-                        quickAddURL = ""
-                    }
-                } message: {
-                    Text("Enter a URL to create a portal")
                 }
                 // Quick Paste success toast
                 .overlay(alignment: .bottom) {
@@ -441,33 +452,24 @@ struct PortalListView: View {
             return
         }
 
-        // Check if already exists
-        if portalManager.portals.contains(where: { $0.url == validURL.absoluteString }) {
-            print("⚠️ Portal already exists for this URL")
-            return
-        }
-
-        // Create portal
-        let portal = DropService.createPortal(from: validURL)
-        portalManager.add(portal)
-
-        // Show success toast
-        quickPastePortalName = portal.name
-        withAnimation {
-            showQuickPasteSuccess = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+        if let portal = createPortalIfNeeded(from: validURL) {
+            quickPastePortalName = portal.name
             withAnimation {
-                showQuickPasteSuccess = false
+                showQuickPasteSuccess = true
             }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                withAnimation {
+                    showQuickPasteSuccess = false
+                }
+            }
+            print("📋 Quick Paste created: \(portal.name)")
         }
-
-        print("📋 Quick Paste created: \(portal.name)")
         #endif
     }
 
     private func quickAddFromURL() {
-        let input = quickAddURL.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let input = quickAddURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowercasedInput = input.lowercased()
         guard !input.isEmpty else {
             quickAddURL = ""
             return
@@ -476,10 +478,10 @@ struct PortalListView: View {
         // Build URL from input
         var urlString: String
 
-        if input.hasPrefix("http://") || input.hasPrefix("https://") {
+        if lowercasedInput.hasPrefix("http://") || lowercasedInput.hasPrefix("https://") {
             // Already has scheme
             urlString = input
-        } else if input.contains(".") {
+        } else if lowercasedInput.contains(".") {
             // Has domain extension (e.g., "youtube.com")
             urlString = "https://" + input
         } else {
@@ -493,22 +495,18 @@ struct PortalListView: View {
             return
         }
 
-        // Create portal
-        let portal = DropService.createPortal(from: validURL)
-        portalManager.add(portal)
-
-        // Show success toast
-        quickPastePortalName = portal.name
-        withAnimation {
-            showQuickPasteSuccess = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+        if let portal = createPortalIfNeeded(from: validURL) {
+            quickPastePortalName = portal.name
             withAnimation {
-                showQuickPasteSuccess = false
+                showQuickPasteSuccess = true
             }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                withAnimation {
+                    showQuickPasteSuccess = false
+                }
+            }
+            print("⌨️ Quick Add created: \(portal.name)")
         }
-
-        print("⌨️ Quick Add created: \(portal.name)")
         quickAddURL = ""
     }
 
@@ -534,31 +532,55 @@ struct PortalListView: View {
     }
 
     private func createPortals(from urls: [URL]) {
-        let newPortals = DropService.createPortals(from: urls)
-        portalManager.addMultiple(newPortals)
+        var newPortals: [Portal] = []
+        var duplicateIDs: [UUID] = []
 
-        // Show success toast
-        lastDropCount = newPortals.count
-        withAnimation {
-            showDropSuccess = true
-        }
-
-        // Hide after delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            withAnimation {
-                showDropSuccess = false
+        for url in urls {
+            if let existingPortal = existingPortal(for: url) {
+                duplicateIDs.append(existingPortal.id)
+            } else {
+                newPortals.append(DropService.createPortal(from: url))
             }
         }
 
-        print("🎯 Created \(newPortals.count) portals via drag & drop")
+        if !newPortals.isEmpty {
+            portalManager.addMultiple(newPortals)
+            registerCreatedPortal(newPortals.last)
+
+            lastDropCount = newPortals.count
+            withAnimation {
+                showDropSuccess = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                withAnimation {
+                    showDropSuccess = false
+                }
+            }
+
+            print("🎯 Created \(newPortals.count) portals via drag & drop")
+        }
+
+        if newPortals.isEmpty, let duplicateID = duplicateIDs.first {
+            requestFocus(on: duplicateID)
+            print("🔁 Summoned existing portal from drop")
+        }
     }
 
     // MARK: - Portal List
 
     private var portalListView: some View {
-        List {
-            ForEach(filteredAndSortedPortals) { portal in
-                PortalRow(portal: portal)
+        ScrollViewReader { proxy in
+            List {
+                ForEach(filteredAndSortedPortals) { portal in
+                    VStack(alignment: .leading, spacing: 8) {
+                        PortalRow(portal: portal)
+
+                        if microActionsPortalID == portal.id {
+                            microActionsView(for: portal)
+                        }
+                    }
+                    .scaleEffect(microActionsPortalID == portal.id ? 1.02 : 1.0)
+                    .animation(.spring(response: 0.25, dampingFraction: 0.7), value: microActionsPortalID)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         openPortal(portal)
@@ -566,15 +588,29 @@ struct PortalListView: View {
                     .contextMenu {
                         portalContextMenu(for: portal)
                     }
-            }
-            .onMove { source, destination in
-                // Only allow move in custom sort mode
-                if sortOrder == .custom && filterOption == .all {
-                    portalManager.movePortals(from: source, to: destination, in: filteredAndSortedPortals)
+                    .id(portal.id)
+                }
+                .onMove { source, destination in
+                    // Only allow move in custom sort mode
+                    if sortOrder == .custom && filterOption == .all {
+                        portalManager.movePortals(from: source, to: destination, in: filteredAndSortedPortals)
+                    }
                 }
             }
+            .environment(\.editMode, sortOrder == .custom && filterOption == .all ? .constant(.active) : .constant(.inactive))
+            .onChange(of: focusRequestPortalID) { portalID in
+                guard let portalID else { return }
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(portalID, anchor: .center)
+                }
+                showMicroActions(for: portalID)
+            }
+            .onChange(of: dismissMicroActionsPortalID) { portalID in
+                guard let portalID else { return }
+                dismissMicroActions(for: portalID)
+                dismissMicroActionsPortalID = nil
+            }
         }
-        .environment(\.editMode, sortOrder == .custom && filterOption == .all ? .constant(.active) : .constant(.inactive))
     }
     
     // MARK: - Filtered & Sorted Portals
@@ -790,6 +826,131 @@ struct PortalListView: View {
             }
         }
     }
+
+    // MARK: - Micro-Actions
+
+    private func requestFocus(on portalID: UUID) {
+        focusRequestPortalID = portalID
+    }
+
+    private func showMicroActions(for portalID: UUID) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            microActionsPortalID = portalID
+        }
+        scheduleMicroActionsDismiss(for: portalID, after: 4.0)
+    }
+
+    private func keepMicroActionsVisible(for portalID: UUID) {
+        guard microActionsPortalID == portalID else { return }
+        scheduleMicroActionsDismiss(for: portalID, after: 3.0)
+    }
+
+    private func dismissMicroActions(for portalID: UUID) {
+        guard microActionsPortalID == portalID else { return }
+        microActionsWorkItem?.cancel()
+        microActionsWorkItem = nil
+        withAnimation(.easeInOut(duration: 0.2)) {
+            microActionsPortalID = nil
+        }
+        if focusRequestPortalID == portalID {
+            focusRequestPortalID = nil
+        }
+    }
+
+    private func scheduleMicroActionsDismiss(for portalID: UUID, after delay: TimeInterval) {
+        microActionsWorkItem?.cancel()
+        let workItem = DispatchWorkItem {
+            dismissMicroActions(for: portalID)
+        }
+        microActionsWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func registerCreatedPortal(_ portal: Portal?) {
+        guard let portal else { return }
+        lastCreatedPortalID = portal.id
+        requestFocus(on: portal.id)
+    }
+
+    private func existingPortal(for url: URL) -> Portal? {
+        portalManager.portals.first { URLNormalizer.matches($0.url, url.absoluteString) }
+    }
+
+    private func createPortalIfNeeded(from url: URL) -> Portal? {
+        if let existingPortal = existingPortal(for: url) {
+            requestFocus(on: existingPortal.id)
+            print("🔁 Summoned existing portal")
+            return nil
+        }
+
+        let portal = DropService.createPortal(from: url)
+        portalManager.add(portal)
+        registerCreatedPortal(portal)
+        return portal
+    }
+
+    private func microActionsView(for portal: Portal) -> some View {
+        HStack(spacing: 10) {
+            Menu {
+                if constellationManager.constellations.isEmpty {
+                    Text("No constellations yet")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(constellationManager.constellations) { constellation in
+                        let isInConstellation = constellation.portalIDs.contains(portal.id)
+                        Button {
+                            if isInConstellation {
+                                constellationManager.removePortal(portal.id, from: constellation)
+                            } else {
+                                constellationManager.addPortal(portal.id, to: constellation)
+                                showAssignmentFeedback(constellation.name)
+                            }
+                        } label: {
+                            Label(
+                                constellation.name,
+                                systemImage: isInConstellation ? "checkmark.circle.fill" : constellation.icon
+                            )
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button {
+                    portalForNewConstellation = portal
+                    showCreateConstellation = true
+                } label: {
+                    Label("Create New...", systemImage: "plus.circle")
+                }
+            } label: {
+                Image(systemName: "star.circle")
+            }
+
+            Button {
+                keepMicroActionsVisible(for: portal.id)
+                portalManager.togglePin(portal)
+            } label: {
+                Image(systemName: portal.isPinned ? "mappin.slash.circle" : "mappin.circle")
+            }
+
+            Button {
+                keepMicroActionsVisible(for: portal.id)
+                portalToEdit = portal
+            } label: {
+                Image(systemName: "pencil")
+            }
+
+            Button {
+                dismissMicroActions(for: portal.id)
+            } label: {
+                Image(systemName: "checkmark.circle")
+            }
+        }
+        .font(.caption)
+        .buttonStyle(.bordered)
+        .contentShape(Rectangle())
+        .simultaneousGesture(TapGesture().onEnded { keepMicroActionsVisible(for: portal.id) })
+    }
 }
 
 // MARK: - Portal Row
@@ -890,4 +1051,56 @@ private let relativeFormatter: RelativeDateTimeFormatter = {
 #Preview {
     PortalListView()
         .environment(PortalManager())
+}
+
+// MARK: - Quick Add Portal View
+
+private struct QuickAddPortalView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let initialURL: String
+    let onCancel: () -> Void
+    let onSubmit: (String) -> Void
+
+    @State private var urlText: String
+
+    init(initialURL: String, onCancel: @escaping () -> Void, onSubmit: @escaping (String) -> Void) {
+        self.initialURL = initialURL
+        self.onCancel = onCancel
+        self.onSubmit = onSubmit
+        _urlText = State(initialValue: initialURL)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        TextField("URL", text: $urlText)
+                            .textContentType(.URL)
+                            .keyboardType(.URL)
+                            .autocapitalization(.none)
+                            .autocorrectionDisabled()
+                    }
+                }
+            }
+            .navigationTitle("Quick Add")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        onCancel()
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        onSubmit(urlText)
+                        dismiss()
+                    }
+                    .disabled(urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
 }

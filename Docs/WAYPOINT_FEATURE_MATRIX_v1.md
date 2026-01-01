@@ -90,6 +90,7 @@ and all confirmed implementation discussions.
 - Duplicate portal detection:
   - Summon existing instead of creating duplicate
   - Show micro-actions
+  - Status: Implemented (Phase 2)
 
 ---
 

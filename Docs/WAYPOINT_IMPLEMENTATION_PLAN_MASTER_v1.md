@@ -82,6 +82,7 @@ We are implementing the **Orb Sacred Flow** on top of existing managers (no majo
 **Done when**
 - New portals show actions without extra taps
 - Duplicate add does not create new portal; it summons original
+**Status:** Completed
 
 ---
 

@@ -30,7 +30,7 @@
 
 ---
 
-## Step 2 — New Portal Micro-Actions (create + duplicate)
+## Step 2 — New Portal Micro-Actions (create + duplicate) ✅ Completed
 1. Add a transient `lastCreatedPortalID` and `focusRequestPortalID` to drive UI feedback
 2. After create:
    - pulse orb/row
@@ -39,6 +39,7 @@
    - summon existing (focus request) + same micro-actions
 
 **Output:** Creation feels premium and guided.
+**Status:** Completed (micro-actions + duplicate summon in place)
 
 ---
 
