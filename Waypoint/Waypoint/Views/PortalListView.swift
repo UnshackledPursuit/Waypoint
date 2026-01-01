@@ -20,6 +20,7 @@ struct PortalListView: View {
     @State private var showQuickStart = false
     @State private var showCreateConstellation = false
     @State private var portalForNewConstellation: Portal?
+    @State private var constellationToEdit: Constellation?
 
     // Quick Add state
     @State private var showQuickAdd = false
@@ -53,6 +54,9 @@ struct PortalListView: View {
     @State private var microActionsWorkItem: DispatchWorkItem?
     @State private var dismissMicroActionsPortalID: UUID?
     @State private var expandedConstellationPortalID: UUID?
+
+    // Edit mode for drag/drop reordering
+    @State private var editMode: EditMode = .inactive
     
     enum SortOrder: String, CaseIterable {
         case custom = "Custom"
@@ -129,18 +133,70 @@ struct PortalListView: View {
                             }
                         }
 
-                        // Constellation filters
+                        // Constellation filters - tap to filter, edit via submenu
                         if !constellationManager.constellations.isEmpty {
                             Section("Constellations") {
+                                // Direct tap-to-filter for each constellation
                                 ForEach(constellationManager.constellations) { constellation in
                                     Button {
                                         filterOption = .constellation(constellation.id)
                                     } label: {
-                                        Label(
-                                            constellation.name,
-                                            systemImage: filterOption == .constellation(constellation.id) ? "checkmark" : constellation.icon
-                                        )
+                                        Label {
+                                            Text(constellation.name)
+                                        } icon: {
+                                            Image(systemName: filterOption == .constellation(constellation.id) ? "checkmark" : constellation.icon)
+                                        }
                                     }
+                                }
+                            }
+
+                            // Manage constellations section
+                            Section("Manage") {
+                                // Edit constellation submenu
+                                Menu {
+                                    ForEach(constellationManager.constellations) { constellation in
+                                        Button {
+                                            constellationToEdit = constellation
+                                        } label: {
+                                            Label(constellation.name, systemImage: constellation.icon)
+                                        }
+                                    }
+                                } label: {
+                                    Label("Edit Constellation...", systemImage: "pencil")
+                                }
+
+                                // Delete constellation submenu
+                                Menu {
+                                    ForEach(constellationManager.constellations) { constellation in
+                                        Button(role: .destructive) {
+                                            if case .constellation(let id) = filterOption, id == constellation.id {
+                                                filterOption = .all
+                                            }
+                                            constellationManager.delete(constellation)
+                                        } label: {
+                                            Label(constellation.name, systemImage: constellation.icon)
+                                        }
+                                    }
+                                } label: {
+                                    Label("Delete Constellation...", systemImage: "trash")
+                                }
+
+                                // Create new constellation
+                                Button {
+                                    portalForNewConstellation = nil
+                                    showCreateConstellation = true
+                                } label: {
+                                    Label("New Constellation...", systemImage: "plus.circle")
+                                }
+                            }
+                        } else {
+                            // No constellations yet - show create option
+                            Section("Constellations") {
+                                Button {
+                                    portalForNewConstellation = nil
+                                    showCreateConstellation = true
+                                } label: {
+                                    Label("Create Constellation...", systemImage: "plus.circle")
                                 }
                             }
                         }
@@ -229,6 +285,10 @@ struct PortalListView: View {
                 // Create constellation sheet
                 .sheet(isPresented: $showCreateConstellation) {
                     CreateConstellationView(initialPortal: portalForNewConstellation)
+                }
+                // Edit constellation sheet
+                .sheet(item: $constellationToEdit) { constellation in
+                    EditConstellationView(constellation: constellation)
                 }
                 // Quick Paste success toast
                 .overlay(alignment: .bottom) {
@@ -611,13 +671,21 @@ struct PortalListView: View {
                     .id(portal.id)
                 }
                 .onMove { source, destination in
-                    // Only allow move in custom sort mode
-                    if sortOrder == .custom && filterOption == .all {
+                    // Allow move in custom sort mode for any filter
+                    if sortOrder == .custom {
                         portalManager.movePortals(from: source, to: destination, in: filteredAndSortedPortals)
                     }
                 }
             }
-            .environment(\.editMode, sortOrder == .custom && filterOption == .all ? .constant(.active) : .constant(.inactive))
+            .environment(\.editMode, $editMode)
+            .onChange(of: sortOrder) { _, newValue in
+                withAnimation {
+                    editMode = newValue == .custom ? .active : .inactive
+                }
+            }
+            .onAppear {
+                editMode = sortOrder == .custom ? .active : .inactive
+            }
             .onChange(of: focusRequestPortalID) { _, portalID in
                 guard let portalID else { return }
                 withAnimation(.easeInOut(duration: 0.25)) {
@@ -737,12 +805,13 @@ struct PortalListView: View {
             Label("Edit", systemImage: "pencil")
         }
 
-        // Constellation submenu
+        // Constellation submenu - tap to toggle assignment (simple and fast)
         Menu {
             if constellationManager.constellations.isEmpty {
                 Text("No constellations yet")
                     .foregroundStyle(.secondary)
             } else {
+                // Simple tap-to-toggle list
                 ForEach(constellationManager.constellations) { constellation in
                     let isAssigned = constellation.portalIDs.contains(portal.id)
                     Button {
@@ -756,9 +825,7 @@ struct PortalListView: View {
                         Label {
                             Text(constellation.name)
                         } icon: {
-                            Image(systemName: constellation.icon)
-                                .symbolRenderingMode(.palette)
-                                .foregroundStyle(isAssigned ? constellation.color : .secondary)
+                            Image(systemName: isAssigned ? "checkmark.circle.fill" : constellation.icon)
                         }
                     }
                 }
@@ -770,7 +837,7 @@ struct PortalListView: View {
                 portalForNewConstellation = portal
                 showCreateConstellation = true
             } label: {
-                Label("New...", systemImage: "plus.circle")
+                Label("New Constellation...", systemImage: "plus.circle")
             }
         } label: {
             Label("Constellations", systemImage: "sparkles")
@@ -868,7 +935,9 @@ struct PortalListView: View {
 
     private func keepMicroActionsVisible(for portalID: UUID) {
         guard microActionsPortalID == portalID else { return }
-        scheduleMicroActionsDismiss(for: portalID, after: 3.0)
+        // Longer timeout when orbital picker is expanded (for context menu interactions)
+        let timeout: TimeInterval = expandedConstellationPortalID == portalID ? 8.0 : 3.0
+        scheduleMicroActionsDismiss(for: portalID, after: timeout)
     }
 
     private func dismissMicroActions(for portalID: UUID) {
@@ -1012,6 +1081,28 @@ struct PortalListView: View {
                         .foregroundStyle(isAssigned ? constellation.color : .secondary)
                 }
                 .buttonStyle(.plain)
+                .simultaneousGesture(
+                    LongPressGesture(minimumDuration: 0.3)
+                        .onEnded { _ in
+                            // Extend timer significantly when context menu is about to show
+                            extendMicroActionsForContextMenu(for: portal.id)
+                        }
+                )
+                .contextMenu {
+                    Button {
+                        constellationToEdit = constellation
+                    } label: {
+                        Label("Edit \(constellation.name)", systemImage: "pencil")
+                    }
+
+                    Divider()
+
+                    Button(role: .destructive) {
+                        constellationManager.delete(constellation)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
             }
 
             // Add new constellation button
@@ -1033,6 +1124,12 @@ struct PortalListView: View {
         #else
         .background(.regularMaterial, in: Capsule())
         #endif
+    }
+
+    private func extendMicroActionsForContextMenu(for portalID: UUID) {
+        guard microActionsPortalID == portalID else { return }
+        // Long timeout for context menu interactions (15 seconds)
+        scheduleMicroActionsDismiss(for: portalID, after: 15.0)
     }
 }
 

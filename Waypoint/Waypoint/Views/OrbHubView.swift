@@ -14,6 +14,9 @@ struct OrbHubView: View {
     @Binding var selectedConstellationID: UUID?
     let constellations: [Constellation]
     let onSelect: () -> Void
+    var onEditConstellation: ((Constellation) -> Void)?
+    var onDeleteConstellation: ((Constellation) -> Void)?
+    var onCreateConstellation: (() -> Void)?
 
     // MARK: - Body
 
@@ -38,6 +41,36 @@ struct OrbHubView: View {
                         selectedConstellationID = constellation.id
                         onSelect()
                     }
+                    .contextMenu {
+                        Button {
+                            onEditConstellation?(constellation)
+                        } label: {
+                            Label("Edit \(constellation.name)", systemImage: "pencil")
+                        }
+
+                        Divider()
+
+                        Button(role: .destructive) {
+                            onDeleteConstellation?(constellation)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+
+                // Add new constellation button
+                if let onCreate = onCreateConstellation {
+                    Button {
+                        onCreate()
+                    } label: {
+                        Image(systemName: "plus.circle")
+                            .font(.subheadline)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 8)
+                            .background(Color(.secondarySystemFill))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 6)
@@ -75,7 +108,8 @@ struct OrbHubView: View {
     OrbHubView(
         selectedConstellationID: .constant(nil),
         constellations: Constellation.samples,
-        onSelect: {}
+        onSelect: {},
+        onCreateConstellation: {}
     )
     .padding()
 }

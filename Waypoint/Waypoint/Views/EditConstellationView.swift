@@ -1,36 +1,37 @@
 //
-//  CreateConstellationView.swift
+//  EditConstellationView.swift
 //  Waypoint
 //
-//  Created on December 29, 2024.
+//  Created on January 1, 2026.
 //
 
 import SwiftUI
 
-struct CreateConstellationView: View {
+struct EditConstellationView: View {
 
     // MARK: - Properties
 
     @Environment(\.dismiss) private var dismiss
     @Environment(ConstellationManager.self) private var constellationManager
 
-    let initialPortal: Portal?
+    let constellation: Constellation
 
-    @State private var name: String = ""
-    @State private var selectedIcon: String = "star.fill"
-    @State private var selectedColorHex: String = "#007AFF"
-    @State private var hasCustomName: Bool = false
+    @State private var name: String
+    @State private var selectedIcon: String
+    @State private var selectedColorHex: String
+    @State private var showDeleteConfirmation = false
 
     private var isValid: Bool {
-        !displayName.trimmingCharacters(in: .whitespaces).isEmpty
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    /// The name to use - custom if user typed, otherwise auto-generated
-    private var displayName: String {
-        if hasCustomName && !name.isEmpty {
-            return name
-        }
-        return iconNameSuggestions[selectedIcon] ?? "My Constellation"
+    // MARK: - Initialization
+
+    init(constellation: Constellation) {
+        self.constellation = constellation
+        _name = State(initialValue: constellation.name)
+        _selectedIcon = State(initialValue: constellation.icon)
+        _selectedColorHex = State(initialValue: constellation.colorHex)
     }
 
     // MARK: - Icon Options (2 rows worth)
@@ -45,35 +46,6 @@ struct CreateConstellationView: View {
         "camera.fill", "paintbrush.fill", "hammer.fill", "gearshape.fill", "house.fill"
     ]
 
-    private var allIconOptions: [String] {
-        iconOptionsRow1 + iconOptionsRow2
-    }
-
-    // MARK: - Icon to Name Mapping
-
-    private let iconNameSuggestions: [String: String] = [
-        "star.fill": "Favorites",
-        "heart.fill": "Personal",
-        "bolt.fill": "Quick Access",
-        "flame.fill": "Hot",
-        "sparkles": "AI Tools",
-        "moon.fill": "Night Mode",
-        "sun.max.fill": "Morning",
-        "cloud.fill": "Cloud",
-        "leaf.fill": "Nature",
-        "drop.fill": "Essentials",
-        "briefcase.fill": "Work",
-        "book.fill": "Reading",
-        "gamecontroller.fill": "Gaming",
-        "music.note": "Music",
-        "film.fill": "Entertainment",
-        "camera.fill": "Photos",
-        "paintbrush.fill": "Creative",
-        "hammer.fill": "Tools",
-        "gearshape.fill": "Settings",
-        "house.fill": "Home"
-    ]
-
     // MARK: - Color Options
 
     private let colorOptions = [
@@ -85,41 +57,50 @@ struct CreateConstellationView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Hero Orb Preview (Large - Version B)
-                heroOrbPreview
-                    .padding(.top, 20)
-                    .padding(.bottom, 16)
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Hero Orb Preview
+                    heroOrbPreview
+                        .padding(.top, 20)
+                        .padding(.bottom, 16)
 
-                // Compact Form (no scrolling needed)
-                VStack(spacing: 20) {
-                    // Name Field with inline preview (Version A option)
-                    nameFieldSection
+                    // Compact Form
+                    VStack(spacing: 20) {
+                        // Name Field with inline preview
+                        nameFieldSection
 
-                    // Icon Selection (horizontal scroll, 2 rows)
-                    iconSelectionSection
+                        // Icon Selection
+                        iconSelectionSection
 
-                    // Color Selection (horizontal scroll, 1 row)
-                    colorSelectionSection
+                        // Color Selection
+                        colorSelectionSection
 
-                    // Starting portal info
-                    if let portal = initialPortal {
+                        // Portal count info
                         HStack {
                             Image(systemName: "link")
                                 .foregroundStyle(.secondary)
-                            Text("Starting with: \(portal.name)")
+                            Text("\(constellation.portalIDs.count) portal\(constellation.portalIDs.count == 1 ? "" : "s")")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Spacer()
                         }
                         .padding(.horizontal)
-                    }
-                }
-                .padding(.horizontal)
 
-                Spacer()
+                        // Delete button - inside scroll content with spacing
+                        Button(role: .destructive) {
+                            showDeleteConfirmation = true
+                        } label: {
+                            Label("Delete Constellation", systemImage: "trash")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(.top, 20)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
+                }
             }
-            .navigationTitle("New Constellation")
+            .navigationTitle("Edit Constellation")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -129,16 +110,28 @@ struct CreateConstellationView: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
-                        createConstellation()
+                    Button("Save") {
+                        saveConstellation()
                     }
                     .disabled(!isValid)
                 }
             }
+            .confirmationDialog(
+                "Delete \"\(constellation.name)\"?",
+                isPresented: $showDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    deleteConstellation()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This will remove the constellation. Your portals will not be deleted.")
+            }
         }
     }
 
-    // MARK: - Hero Orb Preview (Large - Version B)
+    // MARK: - Hero Orb Preview
 
     private var heroOrbPreview: some View {
         let orbSize: CGFloat = 80
@@ -259,17 +252,17 @@ struct CreateConstellationView: View {
             .shadow(color: Color.black.opacity(0.15), radius: 6, y: 3)
 
             // Name under orb
-            Text(displayName)
+            Text(name.isEmpty ? "Constellation" : name)
                 .font(.headline)
                 .foregroundStyle(.primary)
         }
     }
 
-    // MARK: - Name Field Section (with small inline preview - Version A)
+    // MARK: - Name Field Section
 
     private var nameFieldSection: some View {
         HStack(spacing: 12) {
-            // Small inline orb preview (Version A)
+            // Small inline orb preview
             ZStack {
                 Circle()
                     .fill(
@@ -295,16 +288,13 @@ struct CreateConstellationView: View {
                     .shadow(color: Color(hex: selectedColorHex).opacity(0.8), radius: 3)
             }
 
-            // Name text field - shows auto-suggestion, user types to replace
-            TextField("Name", text: $name, prompt: Text(iconNameSuggestions[selectedIcon] ?? "Constellation Name"))
+            // Name text field
+            TextField("Name", text: $name)
                 .textFieldStyle(.roundedBorder)
-                .onChange(of: name) { _, newValue in
-                    hasCustomName = !newValue.isEmpty
-                }
         }
     }
 
-    // MARK: - Icon Selection (Horizontal Scroll, 2 Rows)
+    // MARK: - Icon Selection
 
     private var iconSelectionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -338,10 +328,6 @@ struct CreateConstellationView: View {
         Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 selectedIcon = icon
-                // Only auto-fill name if user hasn't customized it
-                if !hasCustomName {
-                    name = ""  // Clear to use auto-suggestion
-                }
             }
         } label: {
             Image(systemName: icon)
@@ -365,7 +351,7 @@ struct CreateConstellationView: View {
         .scaleEffect(selectedIcon == icon ? 1.05 : 1.0)
     }
 
-    // MARK: - Color Selection (Horizontal Scroll + Color Picker)
+    // MARK: - Color Selection (with Color Picker)
 
     private var colorSelectionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -420,23 +406,20 @@ struct CreateConstellationView: View {
 
     // MARK: - Actions
 
-    private func createConstellation() {
-        let finalName = displayName.trimmingCharacters(in: .whitespaces)
+    private func saveConstellation() {
+        var updated = constellation
+        updated.name = name.trimmingCharacters(in: .whitespaces)
+        updated.icon = selectedIcon
+        updated.colorHex = selectedColorHex
 
-        var portalIDs: [UUID] = []
-        if let portal = initialPortal {
-            portalIDs.append(portal.id)
-        }
+        constellationManager.update(updated)
+        print("✏️ Updated constellation: \(updated.name)")
+        dismiss()
+    }
 
-        let constellation = Constellation(
-            name: finalName,
-            portalIDs: portalIDs,
-            icon: selectedIcon,
-            colorHex: selectedColorHex
-        )
-
-        constellationManager.add(constellation)
-        print("✨ Created constellation: \(finalName)")
+    private func deleteConstellation() {
+        constellationManager.delete(constellation)
+        print("🗑️ Deleted constellation: \(constellation.name)")
         dismiss()
     }
 }
@@ -444,11 +427,6 @@ struct CreateConstellationView: View {
 // MARK: - Preview
 
 #Preview {
-    CreateConstellationView(initialPortal: nil)
-        .environment(ConstellationManager())
-}
-
-#Preview("With Portal") {
-    CreateConstellationView(initialPortal: Portal.sample)
+    EditConstellationView(constellation: Constellation.sample)
         .environment(ConstellationManager())
 }

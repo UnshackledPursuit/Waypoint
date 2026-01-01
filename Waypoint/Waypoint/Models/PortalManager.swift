@@ -28,12 +28,32 @@ class PortalManager {
     // MARK: - CRUD Operations
     
     func add(_ portal: Portal) {
-        portals.append(portal)
+        // New portals appear at top (sortIndex = 0), shift others down
+        // Use safe arithmetic to prevent overflow
+        for i in portals.indices {
+            if portals[i].sortIndex < Int.max - 1 {
+                portals[i].sortIndex += 1
+            }
+        }
+        var newPortal = portal
+        newPortal.sortIndex = 0
+        portals.append(newPortal)
         save()
     }
 
     func addMultiple(_ newPortals: [Portal]) {
-        portals.append(contentsOf: newPortals)
+        // Shift existing portals down with overflow protection
+        let shiftAmount = newPortals.count
+        for i in portals.indices {
+            if portals[i].sortIndex < Int.max - shiftAmount {
+                portals[i].sortIndex += shiftAmount
+            }
+        }
+        // Add new portals with consecutive sortIndex starting at 0
+        for (index, var portal) in newPortals.enumerated() {
+            portal.sortIndex = index
+            portals.append(portal)
+        }
         save()
         print("✅ Added \(newPortals.count) portals")
     }

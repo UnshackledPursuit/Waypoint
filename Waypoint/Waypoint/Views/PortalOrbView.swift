@@ -23,58 +23,112 @@ struct PortalOrbView: View {
             VStack(spacing: 8) {
                 // Glass sphere orb
                 ZStack {
-                    // Outer glow
+                    // Outer glow - ambient light effect
                     Circle()
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    accentColor.opacity(0.25),
-                                    accentColor.opacity(0.08),
+                                    accentColor.opacity(0.3),
+                                    accentColor.opacity(0.12),
+                                    accentColor.opacity(0.03),
                                     Color.clear
                                 ],
                                 center: .center,
-                                startRadius: size * 0.4,
-                                endRadius: size * 0.8
+                                startRadius: size * 0.35,
+                                endRadius: size * 0.85
                             )
                         )
-                        .frame(width: size * 1.5, height: size * 1.5)
+                        .frame(width: size * 1.6, height: size * 1.6)
 
-                    // Glass sphere base
+                    // Main sphere body - deeper 3D gradient
                     Circle()
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    Color.white.opacity(0.35),
-                                    accentColor.opacity(0.15),
-                                    accentColor.opacity(0.3)
+                                    accentColor.opacity(0.2),
+                                    accentColor.opacity(0.35),
+                                    accentColor.opacity(0.5),
+                                    accentColor.opacity(0.6)
                                 ],
-                                center: .topLeading,
+                                center: UnitPoint(x: 0.3, y: 0.25),
                                 startRadius: size * 0.05,
-                                endRadius: size * 0.6
+                                endRadius: size * 0.55
                             )
                         )
                         .frame(width: size, height: size)
-                        .overlay(
-                            // Glass highlight rim
-                            Circle()
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(0.5),
-                                            Color.white.opacity(0.1)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 1.5
-                                )
+
+                    // Top-left specular highlight (key light reflection)
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.white.opacity(0.7),
+                                    Color.white.opacity(0.3),
+                                    Color.white.opacity(0.0)
+                                ],
+                                center: UnitPoint(x: 0.25, y: 0.2),
+                                startRadius: 0,
+                                endRadius: size * 0.35
+                            )
                         )
-                        .shadow(color: accentColor.opacity(0.3), radius: 8, y: 3)
+                        .frame(width: size, height: size)
+
+                    // Rim light effect (subtle edge highlight)
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.6),
+                                    Color.white.opacity(0.2),
+                                    Color.white.opacity(0.05),
+                                    Color.white.opacity(0.15)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.5
+                        )
+                        .frame(width: size, height: size)
+
+                    // Bottom reflection (ground bounce light)
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.white.opacity(0.15),
+                                    Color.clear
+                                ],
+                                center: UnitPoint(x: 0.6, y: 0.85),
+                                startRadius: 0,
+                                endRadius: size * 0.25
+                            )
+                        )
+                        .frame(width: size, height: size)
 
                     // Content: Favicon or Letter
                     orbContent
+
+                    // Glass inner reflection arc (subtle)
+                    Circle()
+                        .trim(from: 0.1, to: 0.4)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.0),
+                                    Color.white.opacity(0.25),
+                                    Color.white.opacity(0.0)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            lineWidth: 2
+                        )
+                        .frame(width: size * 0.7, height: size * 0.7)
+                        .rotationEffect(.degrees(-30))
                 }
-                .frame(width: size * 1.5, height: size * 1.5)
+                .frame(width: size * 1.6, height: size * 1.6)
+                .shadow(color: accentColor.opacity(0.35), radius: 10, y: 4)
+                .shadow(color: Color.black.opacity(0.15), radius: 5, y: 2)
 
                 // Label
                 Text(portal.name)
@@ -85,7 +139,7 @@ struct PortalOrbView: View {
             }
         }
         .buttonStyle(.plain)
-        .frame(width: size * 1.6)
+        .frame(width: size * 1.7)
     }
 
     // MARK: - Orb Content
@@ -94,17 +148,25 @@ struct PortalOrbView: View {
     private var orbContent: some View {
         if let thumbnailData = portal.displayThumbnail,
            let uiImage = UIImage(data: thumbnailData) {
-            // Show favicon/thumbnail
+            // Show favicon/thumbnail with visibility enhancements
             Image(uiImage: uiImage)
                 .resizable()
                 .scaledToFit()
-                .frame(width: size * 0.5, height: size * 0.5)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .frame(width: size * 0.45, height: size * 0.45)
+                .background(
+                    Circle()
+                        .fill(Color.white.opacity(0.85))
+                        .frame(width: size * 0.5, height: size * 0.5)
+                )
+                .clipShape(Circle())
+                .shadow(color: Color.black.opacity(0.2), radius: 3, y: 1)
         } else {
-            // Fallback: First letter
+            // Fallback: First letter with enhanced visibility
             Text(portal.name.prefix(1).uppercased())
-                .font(.system(size: size * 0.35, weight: .semibold, design: .rounded))
-                .foregroundStyle(accentColor)
+                .font(.system(size: size * 0.32, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .shadow(color: accentColor.opacity(0.8), radius: 4)
+                .shadow(color: Color.black.opacity(0.3), radius: 2, y: 1)
         }
     }
 }
