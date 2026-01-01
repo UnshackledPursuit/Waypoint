@@ -57,8 +57,21 @@ enum DropService {
 
         // 3. Check for common sites with known patterns
         if let host = url.host {
-            // YouTube videos
-            if host.contains("youtube.com") || host.contains("youtu.be") {
+            // YouTube - distinguish homepage from videos
+            if host.contains("youtube.com") {
+                let path = url.path
+                // Homepage or empty path
+                if path.isEmpty || path == "/" {
+                    return "YouTube"
+                }
+                // Video pages
+                if path.contains("watch") || url.absoluteString.contains("v=") {
+                    return "YouTube Video"
+                }
+                // Other YouTube pages (channels, playlists, etc.)
+                return "YouTube"
+            }
+            if host.contains("youtu.be") {
                 return "YouTube Video"
             }
 

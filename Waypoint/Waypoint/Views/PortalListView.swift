@@ -489,6 +489,15 @@ struct PortalListView: View {
             urlString = "https://www.\(input).com"
         }
 
+        // Auto-add www for sites that need it for login persistence
+        let sitesNeedingWWW = ["youtube.com", "instagram.com", "reddit.com", "wikipedia.org"]
+        for site in sitesNeedingWWW {
+            if urlString.contains("://\(site)") && !urlString.contains("://www.\(site)") {
+                urlString = urlString.replacingOccurrences(of: "://\(site)", with: "://www.\(site)")
+                break
+            }
+        }
+
         guard let validURL = URL(string: urlString) else {
             print("⚠️ Invalid URL: \(urlString)")
             quickAddURL = ""
@@ -598,14 +607,14 @@ struct PortalListView: View {
                 }
             }
             .environment(\.editMode, sortOrder == .custom && filterOption == .all ? .constant(.active) : .constant(.inactive))
-            .onChange(of: focusRequestPortalID) { portalID in
+            .onChange(of: focusRequestPortalID) { _, portalID in
                 guard let portalID else { return }
                 withAnimation(.easeInOut(duration: 0.25)) {
                     proxy.scrollTo(portalID, anchor: .center)
                 }
                 showMicroActions(for: portalID)
             }
-            .onChange(of: dismissMicroActionsPortalID) { portalID in
+            .onChange(of: dismissMicroActionsPortalID) { _, portalID in
                 guard let portalID else { return }
                 dismissMicroActions(for: portalID)
                 dismissMicroActionsPortalID = nil
@@ -1078,7 +1087,6 @@ private struct QuickAddPortalView: View {
                     HStack {
                         TextField("URL", text: $urlText)
                             .textContentType(.URL)
-                            .keyboardType(.URL)
                             .autocapitalization(.none)
                             .autocorrectionDisabled()
                     }

@@ -16,96 +16,101 @@ enum DropParser {
     // MARK: - Public
 
     static func extractURLs(from providers: [NSItemProvider]) async -> [URL] {
-        var results: [URL] = []
+        var webURLs: [URL] = []
+        var fileURLs: [URL] = []
 
-        results += await loadURLs(ofType: UTType.url, from: providers)
-        results += await loadURLs(ofType: UTType.fileURL, from: providers)
-        results += await loadFileRepresentations(from: providers)
+        // First pass: get web URLs from url type AND text (Safari provides URLs as text)
+        for provider in providers {
+            var gotWebURL = false
 
-        let texts = await loadStrings(from: providers)
-        results += texts.flatMap { extractURLs(from: $0) }
-
-        return dedupePreservingOrder(results)
-    }
-
-    // MARK: - URL Loading
-
-    private static func loadURLs(ofType type: UTType, from providers: [NSItemProvider]) async -> [URL] {
-        await withTaskGroup(of: URL?.self) { group in
-            for provider in providers where provider.hasItemConformingToTypeIdentifier(type.identifier) {
-                group.addTask {
-                    await withCheckedContinuation { continuation in
-                        provider.loadItem(forTypeIdentifier: type.identifier, options: nil) { item, _ in
-                            if let url = item as? URL {
-                                continuation.resume(returning: url)
-                                return
-                            }
-
-                            if let data = item as? Data,
-                               let string = String(data: data, encoding: .utf8),
-                               let url = URL(string: string) {
-                                continuation.resume(returning: url)
-                                return
-                            }
-
-                            continuation.resume(returning: nil)
-                        }
+            // Try URL type first
+            if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
+                if let url = await loadSingleURL(ofType: UTType.url, from: provider) {
+                    if !url.isFileURL {
+                        webURLs.append(url)
+                        gotWebURL = true
                     }
                 }
             }
 
-            var urls: [URL] = []
-            for await url in group {
-                if let url {
-                    urls.append(url)
+            // Also try text extraction for web URLs (Safari uses this)
+            if !gotWebURL && provider.canLoadObject(ofClass: NSString.self) {
+                if let string = await loadSingleString(from: provider) {
+                    let urls = extractURLs(from: string).filter { !$0.isFileURL }
+                    if !urls.isEmpty {
+                        webURLs += urls
+                        gotWebURL = true
+                    }
                 }
             }
-            return urls
+        }
+
+        // If we got ANY web URLs, return only those (skip file processing)
+        // This prevents RTFD duplicates when dropping Notes links
+        if !webURLs.isEmpty {
+            return dedupePreservingOrder(webURLs)
+        }
+
+        // No web URLs found - this is a pure file drop, process files
+        for provider in providers {
+            // Try fileURL type
+            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                if let url = await loadSingleURL(ofType: UTType.fileURL, from: provider) {
+                    // Skip RTFD files
+                    if url.pathExtension.lowercased() == "rtfd" { continue }
+                    fileURLs.append(url)
+                    continue
+                }
+            }
+
+            // Try file representation
+            if let typeIdentifier = fileRepresentationTypeIdentifier(for: provider) {
+                if let url = await loadSingleFileRepresentation(from: provider, typeIdentifier: typeIdentifier) {
+                    // Skip RTFD files
+                    if url.pathExtension.lowercased() == "rtfd" { continue }
+                    fileURLs.append(url)
+                }
+            }
+        }
+
+        return dedupePreservingOrder(fileURLs)
+    }
+
+    private static func loadSingleString(from provider: NSItemProvider) async -> String? {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: NSString.self) { object, _ in
+                continuation.resume(returning: (object as? NSString) as String?)
+            }
         }
     }
 
-    private static func loadStrings(from providers: [NSItemProvider]) async -> [String] {
-        await withTaskGroup(of: String?.self) { group in
-            for provider in providers where provider.canLoadObject(ofClass: NSString.self) {
-                group.addTask {
-                    await withCheckedContinuation { continuation in
-                        _ = provider.loadObject(ofClass: NSString.self) { object, _ in
-                            continuation.resume(returning: (object as? NSString) as String?)
-                        }
-                    }
-                }
-            }
+    // MARK: - Single Item Loading
 
-            var strings: [String] = []
-            for await string in group {
-                if let string {
-                    strings.append(string)
+    private static func loadSingleURL(ofType type: UTType, from provider: NSItemProvider) async -> URL? {
+        await withCheckedContinuation { continuation in
+            provider.loadItem(forTypeIdentifier: type.identifier, options: nil) { item, _ in
+                if let url = item as? URL {
+                    continuation.resume(returning: url)
+                    return
                 }
+
+                if let data = item as? Data,
+                   let string = String(data: data, encoding: .utf8),
+                   let url = URL(string: string) {
+                    continuation.resume(returning: url)
+                    return
+                }
+
+                continuation.resume(returning: nil)
             }
-            return strings
         }
     }
 
-    private static func loadFileRepresentations(from providers: [NSItemProvider]) async -> [URL] {
-        await withTaskGroup(of: URL?.self) { group in
-            for provider in providers {
-                guard let typeIdentifier = fileRepresentationTypeIdentifier(for: provider) else { continue }
-                group.addTask {
-                    await withCheckedContinuation { continuation in
-                        provider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { url, _ in
-                            continuation.resume(returning: url)
-                        }
-                    }
-                }
+    private static func loadSingleFileRepresentation(from provider: NSItemProvider, typeIdentifier: String) async -> URL? {
+        await withCheckedContinuation { continuation in
+            provider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { url, _ in
+                continuation.resume(returning: url)
             }
-
-            var urls: [URL] = []
-            for await url in group {
-                if let url {
-                    urls.append(url)
-                }
-            }
-            return urls
         }
     }
 
