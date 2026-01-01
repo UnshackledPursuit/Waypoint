@@ -43,19 +43,31 @@
 
 ---
 
-## Step 3 — Orb Sacred Flow Scaffolding (no physics yet)
-1. Add `OrbSceneState` (hub/expanded/focused)
-2. Implement `OrbTopBar` (Back / Layout / Flip / Launch Set)
-3. Implement `OrbLayoutEngine` strategies:
+## Step 3 — Orb Sacred Flow Scaffolding (no physics yet) ✅ Scaffolding Complete
+1. Add `OrbSceneState` (hub/expanded/focused) ✅
+2. Implement `OrbTopBar` (Back / Layout / Flip / Launch Set) ✅
+3. Implement `OrbLayoutEngine` strategies: ✅
    - Linear (vertical/horizontal)
    - Arc
    - Spiral
    - Hemisphere 2.5D
-4. Implement `OrbFieldView` using:
+4. Implement `OrbFieldView` using: ✅
    - `PortalManager.portals`
    - `ConstellationManager.constellations`
 
 **Output:** You can pinch a constellation → expand → see portals as orbs → launch.
+**Status:** Scaffolding complete. Files created:
+- `OrbSceneState.swift`, `OrbLayoutEngine.swift`
+- `OrbContainerView.swift`, `OrbSceneView.swift`, `OrbHubView.swift`
+- `OrbFieldView.swift`, `OrbExpandedView.swift`
+- `OrbTopBar.swift`, `OrbModeToggle.swift`, `OrbOrnamentControls.swift`
+- `PortalOrbView.swift`, `ConstellationOrbView.swift`
+
+**Additional work completed:**
+- Constellation UI redesign (orbital picker, context menu, edit portal toggles)
+- visionOS glass background effects on micro-actions
+- Sample data with coordinated portal/constellation relationships
+- Debug menu loads both portals and constellations
 
 ---
 
