@@ -102,6 +102,22 @@ class ConstellationManager {
         }
     }
 
+    // MARK: - Reordering
+
+    func moveConstellation(_ sourceID: UUID, before targetID: UUID) {
+        guard let sourceIndex = constellations.firstIndex(where: { $0.id == sourceID }),
+              let targetIndex = constellations.firstIndex(where: { $0.id == targetID }),
+              sourceIndex != targetIndex else {
+            return
+        }
+
+        let constellation = constellations.remove(at: sourceIndex)
+        let newTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+        constellations.insert(constellation, at: newTargetIndex)
+        save()
+        print("📦 Reordered constellations")
+    }
+
     // MARK: - Utility
 
     var activeConstellations: [Constellation] {

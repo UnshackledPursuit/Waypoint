@@ -13,12 +13,15 @@ struct ConstellationOrbView: View {
 
     let constellation: Constellation
     let isSelected: Bool
+    var size: CGFloat = 44
+    var showLabel: Bool = true
     var onEdit: ((Constellation) -> Void)?
     var onDelete: ((Constellation) -> Void)?
 
-    // MARK: - Body
+    // MARK: - Computed
 
-    private let orbSize: CGFloat = 44
+    private var orbSize: CGFloat { size }
+    private var iconSize: CGFloat { size * 0.4 }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -108,7 +111,7 @@ struct ConstellationOrbView: View {
 
                 // Icon with enhanced visibility
                 Image(systemName: constellation.icon)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: iconSize, weight: .semibold))
                     .foregroundStyle(.white)
                     .shadow(color: constellation.color.opacity(0.9), radius: 4)
                     .shadow(color: Color.black.opacity(0.25), radius: 2, y: 1)
@@ -117,11 +120,13 @@ struct ConstellationOrbView: View {
             .shadow(color: constellation.color.opacity(0.3), radius: 8, y: 3)
             .shadow(color: Color.black.opacity(0.1), radius: 4, y: 2)
 
-            Text(constellation.name)
-                .font(.caption2)
-                .lineLimit(1)
+            if showLabel {
+                Text(constellation.name)
+                    .font(.caption2)
+                    .lineLimit(1)
+            }
         }
-        .frame(width: 70)
+        .frame(width: showLabel ? 70 : orbSize * 1.5)
         .contextMenu {
             if let onEdit = onEdit {
                 Button {

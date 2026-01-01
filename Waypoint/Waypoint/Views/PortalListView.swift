@@ -152,33 +152,13 @@ struct PortalListView: View {
 
                             // Manage constellations section
                             Section("Manage") {
-                                // Edit constellation submenu
-                                Menu {
-                                    ForEach(constellationManager.constellations) { constellation in
-                                        Button {
-                                            constellationToEdit = constellation
-                                        } label: {
-                                            Label(constellation.name, systemImage: constellation.icon)
-                                        }
+                                // Edit constellation - opens directly, picker inside
+                                Button {
+                                    if let first = constellationManager.constellations.first {
+                                        constellationToEdit = first
                                     }
                                 } label: {
-                                    Label("Edit Constellation...", systemImage: "pencil")
-                                }
-
-                                // Delete constellation submenu
-                                Menu {
-                                    ForEach(constellationManager.constellations) { constellation in
-                                        Button(role: .destructive) {
-                                            if case .constellation(let id) = filterOption, id == constellation.id {
-                                                filterOption = .all
-                                            }
-                                            constellationManager.delete(constellation)
-                                        } label: {
-                                            Label(constellation.name, systemImage: constellation.icon)
-                                        }
-                                    }
-                                } label: {
-                                    Label("Delete Constellation...", systemImage: "trash")
+                                    Label("Edit Constellations", systemImage: "pencil")
                                 }
 
                                 // Create new constellation
@@ -186,7 +166,7 @@ struct PortalListView: View {
                                     portalForNewConstellation = nil
                                     showCreateConstellation = true
                                 } label: {
-                                    Label("New Constellation...", systemImage: "plus.circle")
+                                    Label("New Constellation", systemImage: "plus.circle")
                                 }
                             }
                         } else {
@@ -523,7 +503,32 @@ struct PortalListView: View {
             return
         }
 
-        if let portal = createPortalIfNeeded(from: validURL) {
+        // Check if portal already exists
+        if let existingPortal = existingPortal(for: validURL) {
+            // If filtering by constellation, add existing portal to that constellation
+            if case .constellation(let constellationID) = filterOption,
+               let constellation = constellationManager.constellation(withID: constellationID) {
+                if !constellation.portalIDs.contains(existingPortal.id) {
+                    constellationManager.addPortal(existingPortal.id, to: constellation)
+                    showAssignmentFeedback(constellation.name)
+                }
+            }
+
+            // Show feedback for existing portal
+            quickPastePortalName = "Found: \(existingPortal.name)"
+            withAnimation {
+                showQuickPasteSuccess = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                withAnimation {
+                    showQuickPasteSuccess = false
+                }
+            }
+
+            // Scroll to and highlight the existing portal
+            requestFocus(on: existingPortal.id)
+            print("📋 Quick Paste found existing: \(existingPortal.name)")
+        } else if let portal = createPortalIfNeeded(from: validURL) {
             quickPastePortalName = portal.name
             withAnimation {
                 showQuickPasteSuccess = true
@@ -653,21 +658,40 @@ struct PortalListView: View {
             List {
                 ForEach(filteredAndSortedPortals) { portal in
                     VStack(alignment: .leading, spacing: 8) {
+                        // Portal row with gestures applied ONLY to the row
                         PortalRow(portal: portal)
+                            .contentShape(Rectangle())
+                            .onLongPressGesture(minimumDuration: 0.4, perform: {
+                                // Long press - show micro-actions
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    if let currentID = microActionsPortalID, currentID != portal.id {
+                                        expandedConstellationPortalID = nil
+                                    }
+                                    expandedConstellationPortalID = nil
+                                    microActionsPortalID = portal.id
+                                }
+                                scheduleMicroActionsDismiss(for: portal.id)
+                            }, onPressingChanged: { _ in })
+                            .simultaneousGesture(
+                                TapGesture()
+                                    .onEnded {
+                                        if microActionsPortalID != nil {
+                                            if let currentID = microActionsPortalID {
+                                                dismissMicroActions(for: currentID)
+                                            }
+                                        } else {
+                                            openPortal(portal)
+                                        }
+                                    }
+                            )
 
+                        // Micro-actions - NO parent gestures interfere
                         if microActionsPortalID == portal.id {
                             microActionsView(for: portal)
                                 .transition(.scale.combined(with: .opacity))
                         }
                     }
                     .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        openPortal(portal)
-                    }
-                    .contextMenu {
-                        portalContextMenu(for: portal)
-                    }
                     .id(portal.id)
                 }
                 .onMove { source, destination in
@@ -787,81 +811,8 @@ struct PortalListView: View {
             }
         }
     
-    
-    
-    // MARK: - Context Menu
 
-    @ViewBuilder
-    private func portalContextMenu(for portal: Portal) -> some View {
-        Button {
-            openPortal(portal)
-        } label: {
-            Label("Open", systemImage: "arrow.up.forward.app")
-        }
-
-        Button {
-            portalToEdit = portal
-        } label: {
-            Label("Edit", systemImage: "pencil")
-        }
-
-        // Constellation submenu - tap to toggle assignment (simple and fast)
-        Menu {
-            if constellationManager.constellations.isEmpty {
-                Text("No constellations yet")
-                    .foregroundStyle(.secondary)
-            } else {
-                // Simple tap-to-toggle list
-                ForEach(constellationManager.constellations) { constellation in
-                    let isAssigned = constellation.portalIDs.contains(portal.id)
-                    Button {
-                        if isAssigned {
-                            constellationManager.removePortal(portal.id, from: constellation)
-                        } else {
-                            constellationManager.addPortal(portal.id, to: constellation)
-                            showAssignmentFeedback(constellation.name)
-                        }
-                    } label: {
-                        Label {
-                            Text(constellation.name)
-                        } icon: {
-                            Image(systemName: isAssigned ? "checkmark.circle.fill" : constellation.icon)
-                        }
-                    }
-                }
-            }
-
-            Divider()
-
-            Button {
-                portalForNewConstellation = portal
-                showCreateConstellation = true
-            } label: {
-                Label("New Constellation...", systemImage: "plus.circle")
-            }
-        } label: {
-            Label("Constellations", systemImage: "sparkles")
-        }
-
-        Divider()
-
-        Button {
-            portalManager.togglePin(portal)
-        } label: {
-            Label(
-                portal.isPinned ? "Unpin" : "Pin to Top",
-                systemImage: portal.isPinned ? "mappin.slash.circle" : "mappin.circle.fill"
-            )
-        }
-
-        Divider()
-
-        Button(role: .destructive) {
-            portalManager.delete(portal)
-        } label: {
-            Label("Delete", systemImage: "trash")
-        }
-    }
+    // MARK: - Feedback
 
     private func showAssignmentFeedback(_ constellationName: String) {
         assignedConstellationName = constellationName
@@ -927,17 +878,27 @@ struct PortalListView: View {
     }
 
     private func showMicroActions(for portalID: UUID) {
+        // Clean up any stale state first
+        expandedConstellationPortalID = nil
+        microActionsWorkItem?.cancel()
+        microActionsWorkItem = nil
+
         withAnimation(.easeInOut(duration: 0.2)) {
             microActionsPortalID = portalID
         }
-        scheduleMicroActionsDismiss(for: portalID, after: 4.0)
+        scheduleMicroActionsDismiss(for: portalID)
     }
 
-    private func keepMicroActionsVisible(for portalID: UUID) {
+    private func pauseAutoDismiss() {
+        // Completely pause timer while orbital picker is open
+        microActionsWorkItem?.cancel()
+        microActionsWorkItem = nil
+    }
+
+    private func resumeAutoDismiss(for portalID: UUID) {
+        // Resume timer when orbital picker closes
         guard microActionsPortalID == portalID else { return }
-        // Longer timeout when orbital picker is expanded (for context menu interactions)
-        let timeout: TimeInterval = expandedConstellationPortalID == portalID ? 8.0 : 3.0
-        scheduleMicroActionsDismiss(for: portalID, after: timeout)
+        scheduleMicroActionsDismiss(for: portalID, after: 6.0)
     }
 
     private func dismissMicroActions(for portalID: UUID) {
@@ -953,7 +914,7 @@ struct PortalListView: View {
         }
     }
 
-    private func scheduleMicroActionsDismiss(for portalID: UUID, after delay: TimeInterval) {
+    private func scheduleMicroActionsDismiss(for portalID: UUID, after delay: TimeInterval = 6.0) {
         microActionsWorkItem?.cancel()
         let workItem = DispatchWorkItem {
             dismissMicroActions(for: portalID)
@@ -974,6 +935,15 @@ struct PortalListView: View {
 
     private func createPortalIfNeeded(from url: URL) -> Portal? {
         if let existingPortal = existingPortal(for: url) {
+            // If filtering by constellation, add existing portal to that constellation
+            if case .constellation(let constellationID) = filterOption,
+               let constellation = constellationManager.constellation(withID: constellationID) {
+                if !constellation.portalIDs.contains(existingPortal.id) {
+                    constellationManager.addPortal(existingPortal.id, to: constellation)
+                    showAssignmentFeedback(constellation.name)
+                    print("🔁 Added existing portal to constellation: \(constellation.name)")
+                }
+            }
             requestFocus(on: existingPortal.id)
             print("🔁 Summoned existing portal")
             return nil
@@ -981,6 +951,14 @@ struct PortalListView: View {
 
         let portal = DropService.createPortal(from: url)
         portalManager.add(portal)
+
+        // If filtering by constellation, add new portal to that constellation
+        if case .constellation(let constellationID) = filterOption,
+           let constellation = constellationManager.constellation(withID: constellationID) {
+            constellationManager.addPortal(portal.id, to: constellation)
+            print("✨ Added new portal to constellation: \(constellation.name)")
+        }
+
         registerCreatedPortal(portal)
         return portal
     }
@@ -998,11 +976,14 @@ struct PortalListView: View {
             HStack(spacing: 12) {
                 // Constellation toggle button
                 Button {
-                    keepMicroActionsVisible(for: portal.id)
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         if expandedConstellationPortalID == portal.id {
+                            // Closing picker - resume auto-dismiss
                             expandedConstellationPortalID = nil
+                            resumeAutoDismiss(for: portal.id)
                         } else {
+                            // Opening picker - pause auto-dismiss
+                            pauseAutoDismiss()
                             expandedConstellationPortalID = portal.id
                         }
                     }
@@ -1015,9 +996,11 @@ struct PortalListView: View {
                 }
                 .buttonStyle(.plain)
 
+                // Pin button
                 Button {
-                    keepMicroActionsVisible(for: portal.id)
                     portalManager.togglePin(portal)
+                    // Reset timer on interaction
+                    scheduleMicroActionsDismiss(for: portal.id)
                 } label: {
                     Image(systemName: portal.isPinned ? "mappin.slash" : "mappin")
                         .font(.title2)
@@ -1026,8 +1009,9 @@ struct PortalListView: View {
                 }
                 .buttonStyle(.plain)
 
+                // Edit button
                 Button {
-                    keepMicroActionsVisible(for: portal.id)
+                    dismissMicroActions(for: portal.id)
                     portalToEdit = portal
                 } label: {
                     Image(systemName: "pencil")
@@ -1037,8 +1021,20 @@ struct PortalListView: View {
                 }
                 .buttonStyle(.plain)
 
+                // Delete button (neutral color)
                 Button {
-                    expandedConstellationPortalID = nil
+                    dismissMicroActions(for: portal.id)
+                    portalManager.delete(portal)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.title2)
+                        .symbolVariant(.circle.fill)
+                        .symbolRenderingMode(.hierarchical)
+                }
+                .buttonStyle(.plain)
+
+                // Done button (green checkmark)
+                Button {
                     dismissMicroActions(for: portal.id)
                 } label: {
                     Image(systemName: "checkmark")
@@ -1056,8 +1052,6 @@ struct PortalListView: View {
             .background(.regularMaterial, in: Capsule())
             #endif
         }
-        .contentShape(Rectangle())
-        .simultaneousGesture(TapGesture().onEnded { keepMicroActionsVisible(for: portal.id) })
     }
 
     @ViewBuilder
@@ -1066,7 +1060,7 @@ struct PortalListView: View {
             ForEach(constellationManager.constellations) { constellation in
                 let isAssigned = constellation.portalIDs.contains(portal.id)
                 Button {
-                    keepMicroActionsVisible(for: portal.id)
+                    // Just toggle - don't dismiss, don't reset timer
                     withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
                         if isAssigned {
                             constellationManager.removePortal(portal.id, from: constellation)
@@ -1076,60 +1070,70 @@ struct PortalListView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: constellation.icon)
-                        .font(.title3)
-                        .foregroundStyle(isAssigned ? constellation.color : .secondary)
+                    ZStack {
+                        // Vibrant colored circle with icon
+                        Circle()
+                            .fill(constellation.color.opacity(isAssigned ? 1.0 : 0.75))
+                            .frame(width: 36, height: 36)
+                            .overlay(
+                                Circle()
+                                    .stroke(isAssigned ? Color.white : Color.clear, lineWidth: 2)
+                            )
+                            .shadow(color: constellation.color.opacity(isAssigned ? 0.6 : 0.3), radius: isAssigned ? 4 : 2)
+
+                        Image(systemName: constellation.icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+
+                        // Small checkmark badge when assigned (inside orb area)
+                        if isAssigned {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 14, height: 14)
+                                .overlay(
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundStyle(.white)
+                                )
+                                .offset(x: 12, y: 12)
+                        }
+                    }
+                    .frame(width: 36, height: 36)
                 }
                 .buttonStyle(.plain)
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: 0.3)
-                        .onEnded { _ in
-                            // Extend timer significantly when context menu is about to show
-                            extendMicroActionsForContextMenu(for: portal.id)
-                        }
-                )
                 .contextMenu {
                     Button {
                         constellationToEdit = constellation
                     } label: {
                         Label("Edit \(constellation.name)", systemImage: "pencil")
                     }
-
-                    Divider()
-
-                    Button(role: .destructive) {
-                        constellationManager.delete(constellation)
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
                 }
             }
 
             // Add new constellation button
             Button {
-                keepMicroActionsVisible(for: portal.id)
+                dismissMicroActions(for: portal.id)
                 portalForNewConstellation = portal
                 showCreateConstellation = true
             } label: {
-                Image(systemName: "plus.circle")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
+                Circle()
+                    .fill(Color.secondary.opacity(0.2))
+                    .frame(width: 36, height: 36)
+                    .overlay(
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    )
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         #if os(visionOS)
         .glassBackgroundEffect(in: Capsule())
         #else
         .background(.regularMaterial, in: Capsule())
         #endif
-    }
-
-    private func extendMicroActionsForContextMenu(for portalID: UUID) {
-        guard microActionsPortalID == portalID else { return }
-        // Long timeout for context menu interactions (15 seconds)
-        scheduleMicroActionsDismiss(for: portalID, after: 15.0)
     }
 }
 

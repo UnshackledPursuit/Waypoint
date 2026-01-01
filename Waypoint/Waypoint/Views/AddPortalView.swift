@@ -77,6 +77,13 @@ struct AddPortalView: View {
 
     private var formContent: some View {
         Form {
+            // Hero preview for edit mode
+            if isEditing {
+                Section {
+                    portalHeroPreview
+                }
+            }
+
             Section {
                 TextField("Name", text: $name, prompt: Text("YouTube"))
 
@@ -118,7 +125,7 @@ struct AddPortalView: View {
     @ViewBuilder
     private func constellationToggles(for portal: Portal) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 ForEach(constellationManager.constellations) { constellation in
                     let isAssigned = constellation.portalIDs.contains(portal.id)
                     Button {
@@ -130,33 +137,82 @@ struct AddPortalView: View {
                             }
                         }
                     } label: {
-                        VStack(spacing: 6) {
-                            Image(systemName: constellation.icon)
-                                .font(.title3)
-                                .frame(width: 40, height: 40)
-                                .background(
-                                    Circle()
-                                        .fill(isAssigned ? constellation.color : Color.gray.opacity(0.3))
-                                )
-                                .foregroundStyle(isAssigned ? .white : .secondary)
+                        ZStack {
+                            // Use constellation orb view
+                            ConstellationOrbView(
+                                constellation: constellation,
+                                isSelected: isAssigned,
+                                size: 40,
+                                showLabel: true
+                            )
 
-                            Text(constellation.name)
-                                .font(.caption2)
-                                .foregroundStyle(isAssigned ? .primary : .secondary)
-                                .lineLimit(1)
+                            // Checkmark overlay when assigned
+                            if isAssigned {
+                                Circle()
+                                    .fill(Color.green.opacity(0.9))
+                                    .frame(width: 16, height: 16)
+                                    .overlay(
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundStyle(.white)
+                                    )
+                                    .offset(x: 18, y: -20)
+                            }
                         }
-                        .frame(width: 60)
                     }
                     .buttonStyle(.plain)
-                    .scaleEffect(isAssigned ? 1.0 : 0.95)
                 }
             }
             .padding(.vertical, 4)
         }
     }
     
+    // MARK: - Hero Preview (Edit Mode)
+
+    private var portalHeroPreview: some View {
+        VStack(spacing: 8) {
+            // Thumbnail or letter avatar
+            ZStack {
+                if let portal = editingPortal,
+                   let thumbnailData = portal.displayThumbnail,
+                   let uiImage = UIImage(data: thumbnailData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 56, height: 56)
+
+                    if !name.isEmpty {
+                        Text(name.prefix(1).uppercased())
+                            .font(.title)
+                            .fontWeight(.semibold)
+                    } else {
+                        Image(systemName: "link.circle")
+                            .font(.title)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Text(name.isEmpty ? "Portal Name" : name)
+                .font(.headline)
+                .foregroundStyle(name.isEmpty ? .secondary : .primary)
+
+            Text(url.isEmpty ? "portal-url.com" : cleanURL(url))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+    }
+
     // MARK: - Preview
-    
+
     private var portalPreview: some View {
         HStack(spacing: 12) {
             // Placeholder thumbnail
