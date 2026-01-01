@@ -164,10 +164,20 @@ struct PortalListView: View {
                     Menu {
                         Button("Load Sample Data") {
                             portalManager.loadSampleData()
+                            constellationManager.loadSampleData()
                         }
-                        
+
+                        Button("Clear Portals", role: .destructive) {
+                            portalManager.clearAll()
+                        }
+
+                        Button("Clear Constellations", role: .destructive) {
+                            constellationManager.clearAll()
+                        }
+
                         Button("Clear All", role: .destructive) {
                             portalManager.clearAll()
+                            constellationManager.clearAll()
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
