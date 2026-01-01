@@ -14,9 +14,16 @@ struct WaypointApp: App {
 
     // MARK: - Properties
 
+    enum AppTab: Hashable {
+        case list
+        case orb
+    }
+
     @State private var portalManager = PortalManager()
     @State private var constellationManager = ConstellationManager()
     @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var orbSceneState = OrbSceneState()
+    @State private var selectedTab: AppTab = .list
 
     // Clipboard detection state
     @State private var showClipboardPrompt = false
@@ -30,38 +37,65 @@ struct WaypointApp: App {
 
     var body: some Scene {
         WindowGroup {
-            PortalListView()
-                .environment(portalManager)
-                .environment(constellationManager)
-                .onChange(of: scenePhase) { oldPhase, newPhase in
-                    if newPhase == .active && clipboardDetectionEnabled {
+            TabView(selection: $selectedTab) {
+                PortalListView()
+                    .tabItem {
+                        Label("List", systemImage: "list.bullet")
+                    }
+                    .tag(AppTab.list)
+
+                OrbSceneView(sceneState: orbSceneState)
+                    .tabItem {
+                        Label("Orb", systemImage: "sparkles")
+                    }
+                    .tag(AppTab.orb)
+            }
+            .environment(portalManager)
+            .environment(constellationManager)
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                if newPhase == .active && clipboardDetectionEnabled {
+                    checkClipboardForURL()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                if clipboardDetectionEnabled {
+                    // Small delay to ensure clipboard is ready
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         checkClipboardForURL()
                     }
                 }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                    if clipboardDetectionEnabled {
-                        // Small delay to ensure clipboard is ready
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            checkClipboardForURL()
-                        }
+            }
+            .onOpenURL { url in
+                handleIncomingURL(url)
+            }
+            .alert("Create Portal from Clipboard?", isPresented: $showClipboardPrompt) {
+                Button("Create") {
+                    createPortalFromClipboard()
+                }
+                Button("Not Now", role: .cancel) { }
+                Button("Don't Ask Again") {
+                    clipboardDetectionEnabled = false
+                }
+            } message: {
+                if let url = clipboardURL {
+                    Text("Detected URL:\n\(url.absoluteString.prefix(50))...")
+                }
+            }
+#if os(visionOS)
+            .ornament(visibility: .visible, attachmentAnchor: .scene(.bottom), contentAlignment: .bottom) {
+                if selectedTab == .orb {
+                    OrbAppOrnamentVariant {
+                        OrbOrnamentControls(
+                            selectedConstellationID: $orbSceneState.selectedConstellationID,
+                            layoutMode: $orbSceneState.layoutMode,
+                            constellations: constellationManager.constellations,
+                            layout: .horizontal,
+                            labelStyle: .hoverReveal
+                        )
                     }
                 }
-                .onOpenURL { url in
-                    handleIncomingURL(url)
-                }
-                .alert("Create Portal from Clipboard?", isPresented: $showClipboardPrompt) {
-                    Button("Create") {
-                        createPortalFromClipboard()
-                    }
-                    Button("Not Now", role: .cancel) { }
-                    Button("Don't Ask Again") {
-                        clipboardDetectionEnabled = false
-                    }
-                } message: {
-                    if let url = clipboardURL {
-                        Text("Detected URL:\n\(url.absoluteString.prefix(50))...")
-                    }
-                }
+            }
+#endif
         }
         .defaultSize(width: 400, height: 600)
     }
@@ -217,3 +251,18 @@ struct WaypointApp: App {
         print("🌟 Launched constellation via URL scheme: \(constellation.name)")
     }
 }
+
+// MARK: - Ornament Helpers
+
+#if os(visionOS)
+private struct OrbAppOrnamentVariant<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            content()
+        }
+        .padding(.bottom, 10)
+    }
+}
+#endif
