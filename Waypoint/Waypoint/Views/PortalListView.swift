@@ -661,29 +661,22 @@ struct PortalListView: View {
                         // Portal row with gestures applied ONLY to the row
                         PortalRow(portal: portal)
                             .contentShape(Rectangle())
-                            .onLongPressGesture(minimumDuration: 0.4, perform: {
+                            .onTapGesture {
+                                // Tap - open portal or dismiss micro-actions
+                                if let currentID = microActionsPortalID {
+                                    dismissMicroActions(for: currentID)
+                                } else {
+                                    openPortal(portal)
+                                }
+                            }
+                            .onLongPressGesture(minimumDuration: 0.5) {
                                 // Long press - show micro-actions
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    if let currentID = microActionsPortalID, currentID != portal.id {
-                                        expandedConstellationPortalID = nil
-                                    }
                                     expandedConstellationPortalID = nil
                                     microActionsPortalID = portal.id
                                 }
                                 scheduleMicroActionsDismiss(for: portal.id)
-                            }, onPressingChanged: { _ in })
-                            .simultaneousGesture(
-                                TapGesture()
-                                    .onEnded {
-                                        if microActionsPortalID != nil {
-                                            if let currentID = microActionsPortalID {
-                                                dismissMicroActions(for: currentID)
-                                            }
-                                        } else {
-                                            openPortal(portal)
-                                        }
-                                    }
-                            )
+                            }
 
                         // Micro-actions - NO parent gestures interfere
                         if microActionsPortalID == portal.id {
