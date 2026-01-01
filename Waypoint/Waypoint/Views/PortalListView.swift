@@ -52,6 +52,7 @@ struct PortalListView: View {
     @State private var microActionsPortalID: UUID?
     @State private var microActionsWorkItem: DispatchWorkItem?
     @State private var dismissMicroActionsPortalID: UUID?
+    @State private var expandedConstellationPortalID: UUID?
     
     enum SortOrder: String, CaseIterable {
         case custom = "Custom"
@@ -586,10 +587,10 @@ struct PortalListView: View {
 
                         if microActionsPortalID == portal.id {
                             microActionsView(for: portal)
+                                .transition(.scale.combined(with: .opacity))
                         }
                     }
-                    .scaleEffect(microActionsPortalID == portal.id ? 1.02 : 1.0)
-                    .animation(.spring(response: 0.25, dampingFraction: 0.7), value: microActionsPortalID)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         openPortal(portal)
@@ -730,19 +731,22 @@ struct PortalListView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(constellationManager.constellations) { constellation in
-                    let isInConstellation = constellation.portalIDs.contains(portal.id)
+                    let isAssigned = constellation.portalIDs.contains(portal.id)
                     Button {
-                        if isInConstellation {
+                        if isAssigned {
                             constellationManager.removePortal(portal.id, from: constellation)
                         } else {
                             constellationManager.addPortal(portal.id, to: constellation)
                             showAssignmentFeedback(constellation.name)
                         }
                     } label: {
-                        Label(
-                            constellation.name,
-                            systemImage: isInConstellation ? "checkmark.circle.fill" : constellation.icon
-                        )
+                        Label {
+                            Text(constellation.name)
+                        } icon: {
+                            Image(systemName: constellation.icon)
+                                .symbolRenderingMode(.palette)
+                                .foregroundStyle(isAssigned ? constellation.color : .secondary)
+                        }
                     }
                 }
             }
@@ -753,10 +757,10 @@ struct PortalListView: View {
                 portalForNewConstellation = portal
                 showCreateConstellation = true
             } label: {
-                Label("Create New...", systemImage: "plus.circle")
+                Label("New...", systemImage: "plus.circle")
             }
         } label: {
-            Label("Add to Constellation", systemImage: "star.circle")
+            Label("Constellations", systemImage: "sparkles")
         }
 
         Divider()
@@ -858,6 +862,7 @@ struct PortalListView: View {
         guard microActionsPortalID == portalID else { return }
         microActionsWorkItem?.cancel()
         microActionsWorkItem = nil
+        expandedConstellationPortalID = nil
         withAnimation(.easeInOut(duration: 0.2)) {
             microActionsPortalID = nil
         }
@@ -898,67 +903,115 @@ struct PortalListView: View {
         return portal
     }
 
+    @ViewBuilder
     private func microActionsView(for portal: Portal) -> some View {
-        HStack(spacing: 10) {
-            Menu {
-                if constellationManager.constellations.isEmpty {
-                    Text("No constellations yet")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(constellationManager.constellations) { constellation in
-                        let isInConstellation = constellation.portalIDs.contains(portal.id)
-                        Button {
-                            if isInConstellation {
-                                constellationManager.removePortal(portal.id, from: constellation)
-                            } else {
-                                constellationManager.addPortal(portal.id, to: constellation)
-                                showAssignmentFeedback(constellation.name)
-                            }
-                        } label: {
-                            Label(
-                                constellation.name,
-                                systemImage: isInConstellation ? "checkmark.circle.fill" : constellation.icon
-                            )
+        VStack(spacing: 8) {
+            // Constellation orbital picker (shows when expanded)
+            if expandedConstellationPortalID == portal.id {
+                constellationOrbitalPicker(for: portal)
+                    .transition(.scale.combined(with: .opacity))
+            }
+
+            // Main action buttons
+            HStack(spacing: 12) {
+                // Constellation toggle button
+                Button {
+                    keepMicroActionsVisible(for: portal.id)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        if expandedConstellationPortalID == portal.id {
+                            expandedConstellationPortalID = nil
+                        } else {
+                            expandedConstellationPortalID = portal.id
                         }
                     }
+                } label: {
+                    let assignedCount = constellationManager.constellations.filter { $0.portalIDs.contains(portal.id) }.count
+                    Image(systemName: assignedCount > 0 ? "sparkles" : "sparkle")
+                        .font(.title2)
+                        .symbolVariant(.circle.fill)
+                        .symbolRenderingMode(.hierarchical)
                 }
-
-                Divider()
+                .buttonStyle(.plain)
 
                 Button {
-                    portalForNewConstellation = portal
-                    showCreateConstellation = true
+                    keepMicroActionsVisible(for: portal.id)
+                    portalManager.togglePin(portal)
                 } label: {
-                    Label("Create New...", systemImage: "plus.circle")
+                    Image(systemName: portal.isPinned ? "mappin.slash" : "mappin")
+                        .font(.title2)
+                        .symbolVariant(.circle.fill)
+                        .symbolRenderingMode(.hierarchical)
                 }
-            } label: {
-                Image(systemName: "star.circle")
-            }
+                .buttonStyle(.plain)
 
-            Button {
-                keepMicroActionsVisible(for: portal.id)
-                portalManager.togglePin(portal)
-            } label: {
-                Image(systemName: portal.isPinned ? "mappin.slash.circle" : "mappin.circle")
-            }
+                Button {
+                    keepMicroActionsVisible(for: portal.id)
+                    portalToEdit = portal
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.title2)
+                        .symbolVariant(.circle.fill)
+                        .symbolRenderingMode(.hierarchical)
+                }
+                .buttonStyle(.plain)
 
-            Button {
-                keepMicroActionsVisible(for: portal.id)
-                portalToEdit = portal
-            } label: {
-                Image(systemName: "pencil")
+                Button {
+                    expandedConstellationPortalID = nil
+                    dismissMicroActions(for: portal.id)
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.title2)
+                        .symbolVariant(.circle.fill)
+                        .foregroundStyle(.green)
+                }
+                .buttonStyle(.plain)
             }
-
-            Button {
-                dismissMicroActions(for: portal.id)
-            } label: {
-                Image(systemName: "checkmark.circle")
-            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial, in: Capsule())
         }
-        .font(.caption)
-        .buttonStyle(.bordered)
         .contentShape(Rectangle())
         .simultaneousGesture(TapGesture().onEnded { keepMicroActionsVisible(for: portal.id) })
+    }
+
+    @ViewBuilder
+    private func constellationOrbitalPicker(for portal: Portal) -> some View {
+        HStack(spacing: 16) {
+            ForEach(constellationManager.constellations) { constellation in
+                let isAssigned = constellation.portalIDs.contains(portal.id)
+                Button {
+                    keepMicroActionsVisible(for: portal.id)
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                        if isAssigned {
+                            constellationManager.removePortal(portal.id, from: constellation)
+                        } else {
+                            constellationManager.addPortal(portal.id, to: constellation)
+                            showAssignmentFeedback(constellation.name)
+                        }
+                    }
+                } label: {
+                    Image(systemName: constellation.icon)
+                        .font(.title3)
+                        .foregroundStyle(isAssigned ? constellation.color : .secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Add new constellation button
+            Button {
+                keepMicroActionsVisible(for: portal.id)
+                portalForNewConstellation = portal
+                showCreateConstellation = true
+            } label: {
+                Image(systemName: "plus.circle")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.regularMaterial, in: Capsule())
     }
 }
 

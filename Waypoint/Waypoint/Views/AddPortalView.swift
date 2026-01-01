@@ -14,10 +14,11 @@ struct AddPortalView: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(PortalManager.self) private var portalManager
+    @Environment(ConstellationManager.self) private var constellationManager
     let editingPortal: Portal?
     let focusRequestPortalID: Binding<UUID?>?
     let dismissMicroActionsPortalID: Binding<UUID?>?
-    
+
     @State private var name: String = ""
     @State private var url: String = ""
     @State private var isPinned: Bool = false
@@ -96,12 +97,61 @@ struct AddPortalView: View {
 
                 Toggle("Pin to Top", isOn: $isPinned)
             }
-            
+
+            // Constellation toggles (only show when editing existing portal)
+            if let portal = editingPortal, !constellationManager.constellations.isEmpty {
+                Section {
+                    constellationToggles(for: portal)
+                } header: {
+                    Text("Constellations")
+                }
+            }
+
             Section {
                 portalPreview
             } header: {
                 Text("Preview")
             }
+        }
+    }
+
+    @ViewBuilder
+    private func constellationToggles(for portal: Portal) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(constellationManager.constellations) { constellation in
+                    let isAssigned = constellation.portalIDs.contains(portal.id)
+                    Button {
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                            if isAssigned {
+                                constellationManager.removePortal(portal.id, from: constellation)
+                            } else {
+                                constellationManager.addPortal(portal.id, to: constellation)
+                            }
+                        }
+                    } label: {
+                        VStack(spacing: 6) {
+                            Image(systemName: constellation.icon)
+                                .font(.title3)
+                                .frame(width: 40, height: 40)
+                                .background(
+                                    Circle()
+                                        .fill(isAssigned ? constellation.color : Color.gray.opacity(0.3))
+                                )
+                                .foregroundStyle(isAssigned ? .white : .secondary)
+
+                            Text(constellation.name)
+                                .font(.caption2)
+                                .foregroundStyle(isAssigned ? .primary : .secondary)
+                                .lineLimit(1)
+                        }
+                        .frame(width: 60)
+                    }
+                    .buttonStyle(.plain)
+                    .scaleEffect(isAssigned ? 1.0 : 0.95)
+                }
+            }
+            .padding(.vertical, 4)
         }
     }
     
