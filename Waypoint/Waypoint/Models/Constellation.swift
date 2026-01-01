@@ -54,18 +54,60 @@ struct Constellation: Identifiable, Codable, Hashable {
 extension Constellation {
     static var sample: Constellation {
         Constellation(
-            name: "Morning Routine",
-            portalIDs: [],
-            icon: "sunrise.fill",
-            colorHex: "#FF9500"
+            name: "AI Tools",
+            portalIDs: [Portal.sampleIDs.youtube, Portal.sampleIDs.claude],
+            icon: "sparkles",
+            colorHex: "#AF52DE"
         )
     }
 
     static var samples: [Constellation] {
         [
-            Constellation(name: "Morning Routine", icon: "sunrise.fill", colorHex: "#FF9500"),
-            Constellation(name: "Work Focus", icon: "laptopcomputer", colorHex: "#007AFF"),
-            Constellation(name: "Research", icon: "book.fill", colorHex: "#34C759")
+            // AI Tools - YouTube + all AI assistants
+            Constellation(
+                name: "AI Tools",
+                portalIDs: [
+                    Portal.sampleIDs.youtube,
+                    Portal.sampleIDs.claude,
+                    Portal.sampleIDs.chatgpt,
+                    Portal.sampleIDs.gemini,
+                    Portal.sampleIDs.grok
+                ],
+                icon: "sparkles",
+                colorHex: "#AF52DE"  // Purple
+            ),
+            // Social - YouTube + X
+            Constellation(
+                name: "Social",
+                portalIDs: [
+                    Portal.sampleIDs.youtube,
+                    Portal.sampleIDs.xcom
+                ],
+                icon: "person.2.fill",
+                colorHex: "#FF2D55"  // Pink
+            ),
+            // Productivity - YouTube + work tools
+            Constellation(
+                name: "Productivity",
+                portalIDs: [
+                    Portal.sampleIDs.youtube,
+                    Portal.sampleIDs.gmail,
+                    Portal.sampleIDs.googleDocs,
+                    Portal.sampleIDs.notion
+                ],
+                icon: "briefcase.fill",
+                colorHex: "#007AFF"  // Blue
+            ),
+            // Dev - YouTube + GitHub
+            Constellation(
+                name: "Dev",
+                portalIDs: [
+                    Portal.sampleIDs.youtube,
+                    Portal.sampleIDs.github
+                ],
+                icon: "chevron.left.forwardslash.chevron.right",
+                colorHex: "#34C759"  // Green
+            )
         ]
     }
 }

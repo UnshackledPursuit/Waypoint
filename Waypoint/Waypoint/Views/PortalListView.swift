@@ -613,7 +613,10 @@ struct PortalListView: View {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     proxy.scrollTo(portalID, anchor: .center)
                 }
-                showMicroActions(for: portalID)
+                // Delay micro actions until scroll animation settles
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showMicroActions(for: portalID)
+                }
             }
             .onChange(of: dismissMicroActionsPortalID) { _, portalID in
                 guard let portalID else { return }
@@ -968,7 +971,11 @@ struct PortalListView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            #if os(visionOS)
+            .glassBackgroundEffect(in: Capsule())
+            #else
             .background(.regularMaterial, in: Capsule())
+            #endif
         }
         .contentShape(Rectangle())
         .simultaneousGesture(TapGesture().onEnded { keepMicroActionsVisible(for: portal.id) })
@@ -1011,7 +1018,11 @@ struct PortalListView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        #if os(visionOS)
+        .glassBackgroundEffect(in: Capsule())
+        #else
         .background(.regularMaterial, in: Capsule())
+        #endif
     }
 }
 

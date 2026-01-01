@@ -110,22 +110,42 @@ struct Portal: Identifiable, Codable, Hashable {
 // MARK: - Sample Data
 
 extension Portal {
+    // Fixed UUIDs for sample data (so constellations can reference them)
+    static let sampleIDs = (
+        youtube: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+        claude: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+        chatgpt: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+        gemini: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!,
+        grok: UUID(uuidString: "00000000-0000-0000-0000-000000000005")!,
+        xcom: UUID(uuidString: "00000000-0000-0000-0000-000000000006")!,
+        gmail: UUID(uuidString: "00000000-0000-0000-0000-000000000007")!,
+        googleDocs: UUID(uuidString: "00000000-0000-0000-0000-000000000008")!,
+        github: UUID(uuidString: "00000000-0000-0000-0000-000000000009")!,
+        notion: UUID(uuidString: "00000000-0000-0000-0000-00000000000A")!
+    )
+
     static var sample: Portal {
         Portal(
-            name: "Claude AI",
+            id: sampleIDs.claude,
+            name: "Claude",
             url: "https://claude.ai",
             type: .web,
             isFavorite: true
         )
     }
-    
+
     static var samples: [Portal] {
         [
-            Portal(name: "Claude AI", url: "https://claude.ai", type: .web, isFavorite: true),
-            Portal(name: "Gmail", url: "https://mail.google.com", type: .web),
-            Portal(name: "Calendar", url: "https://calendar.google.com", type: .web),
-            Portal(name: "Notion", url: "https://notion.so", type: .web, isFavorite: true),
-            Portal(name: "GitHub", url: "https://github.com", type: .web)
+            Portal(id: sampleIDs.youtube, name: "YouTube", url: "https://www.youtube.com", type: .web, isPinned: true),
+            Portal(id: sampleIDs.claude, name: "Claude", url: "https://claude.ai", type: .web, isFavorite: true),
+            Portal(id: sampleIDs.chatgpt, name: "ChatGPT", url: "https://chat.openai.com", type: .web),
+            Portal(id: sampleIDs.gemini, name: "Gemini", url: "https://gemini.google.com", type: .web),
+            Portal(id: sampleIDs.grok, name: "Grok", url: "https://grok.x.ai", type: .web),
+            Portal(id: sampleIDs.xcom, name: "X", url: "https://x.com", type: .web),
+            Portal(id: sampleIDs.gmail, name: "Gmail", url: "https://mail.google.com", type: .web),
+            Portal(id: sampleIDs.googleDocs, name: "Google Docs", url: "https://docs.google.com", type: .web),
+            Portal(id: sampleIDs.github, name: "GitHub", url: "https://github.com", type: .web),
+            Portal(id: sampleIDs.notion, name: "Notion", url: "https://notion.so", type: .web)
         ]
     }
 }
