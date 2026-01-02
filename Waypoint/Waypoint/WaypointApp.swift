@@ -87,6 +87,8 @@ struct WaypointApp: App {
             // Left ornament: Navigation (constellations + filters)
             .ornament(visibility: .visible, attachmentAnchor: .scene(.leading), contentAlignment: .leading) {
                 NavigationOrnament()
+                    .environment(navigationState)
+                    .environment(constellationManager)
                     .padding(.leading, 12)
             }
             // Bottom ornament: Orb-specific controls (layout mode)
