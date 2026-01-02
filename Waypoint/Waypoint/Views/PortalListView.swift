@@ -761,8 +761,27 @@ struct PortalListView: View {
                 return date1 > date2
             case .name:
                 return portal1.name.localizedCaseInsensitiveCompare(portal2.name) == .orderedAscending
+            case .constellation:
+                // Sort by constellation order (first constellation a portal belongs to)
+                let index1 = constellationIndex(for: portal1)
+                let index2 = constellationIndex(for: portal2)
+                if index1 != index2 {
+                    return index1 < index2
+                }
+                // Within same constellation, sort by name
+                return portal1.name.localizedCaseInsensitiveCompare(portal2.name) == .orderedAscending
             }
         }
+    }
+
+    /// Returns the index of the first constellation containing this portal, or Int.max if none
+    private func constellationIndex(for portal: Portal) -> Int {
+        for (index, constellation) in constellationManager.constellations.enumerated() {
+            if constellation.portalIDs.contains(portal.id) {
+                return index
+            }
+        }
+        return Int.max // Portals not in any constellation go last
     }
     
     private var emptyStateView: some View {

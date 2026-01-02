@@ -80,6 +80,7 @@ struct WaypointBottomOrnament: View {
 
     private var filterSection: some View {
         HStack(spacing: 4) {
+            // All filter with sort options context menu
             CompactPillButton(
                 icon: "square.grid.2x2",
                 isSelected: navigationState.filterOption == .all,
@@ -88,6 +89,16 @@ struct WaypointBottomOrnament: View {
                     navigationState.selectedConstellationID = nil
                 }
             )
+            .contextMenu {
+                // Sort options as immediate actions (not submenu)
+                ForEach(SortOrder.allCases, id: \.self) { order in
+                    Button {
+                        navigationState.sortOrder = order
+                    } label: {
+                        Label(order.rawValue, systemImage: navigationState.sortOrder == order ? "checkmark" : order.icon)
+                    }
+                }
+            }
 
             CompactPillButton(
                 icon: "pin.fill",

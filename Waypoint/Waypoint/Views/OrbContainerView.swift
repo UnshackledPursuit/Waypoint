@@ -21,26 +21,38 @@ struct OrbContainerView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 16) {
-            if sceneState.isExpanded {
-                OrbExpandedView(
-                    title: expandedTitle,
-                    portals: visiblePortals,
-                    constellationColor: selectedConstellationColor,
-                    onBack: collapse,
-                    onOpen: { portal in
-                        openPortal(portal)
-                    }
-                )
-            } else {
-                OrbLinearField(
-                    portals: visiblePortals,
-                    constellationColor: selectedConstellationColor,
-                    onOpen: { portal in
-                        openPortal(portal)
-                    }
-                )
+        GeometryReader { proxy in
+            let isNarrow = proxy.size.width < 200
+
+            VStack(spacing: 16) {
+                if sceneState.isExpanded {
+                    OrbExpandedView(
+                        title: expandedTitle,
+                        icon: headerIcon,
+                        headerColor: headerColor,
+                        portals: visiblePortals,
+                        constellationColor: selectedConstellationColor,
+                        constellationColorForPortal: isAllView ? constellationColorForPortal : nil,
+                        constellationSections: constellationSections,
+                        isCompact: isNarrow,
+                        onBack: collapse,
+                        onOpen: { portal in
+                            openPortal(portal)
+                        }
+                    )
+                } else {
+                    OrbLinearField(
+                        portals: visiblePortals,
+                        constellationColor: selectedConstellationColor,
+                        constellationColorForPortal: isAllView ? constellationColorForPortal : nil,
+                        constellationSections: constellationSections,
+                        onOpen: { portal in
+                            openPortal(portal)
+                        }
+                    )
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(24) // Consistent padding on all sides
         #if os(visionOS)
@@ -81,17 +93,60 @@ struct OrbContainerView: View {
 
     private var visiblePortals: [Portal] {
         // Use NavigationState for filtering (shared with bottom ornament)
+        let filtered: [Portal]
         switch navigationState.filterOption {
         case .all:
-            return portalManager.portals
+            filtered = portalManager.portals
         case .pinned:
-            return portalManager.portals.filter { $0.isPinned }
+            filtered = portalManager.portals.filter { $0.isPinned }
         case .constellation(let id):
             guard let constellation = constellationManager.constellation(withID: id) else {
-                return portalManager.portals
+                filtered = portalManager.portals
+                break
             }
-            return portalManager.portals.filter { constellation.portalIDs.contains($0.id) }
+            filtered = portalManager.portals.filter { constellation.portalIDs.contains($0.id) }
         }
+
+        // Apply sorting (same logic as PortalListView)
+        return filtered.sorted { portal1, portal2 in
+            // Pinned always comes first regardless of sort
+            if portal1.isPinned != portal2.isPinned {
+                return portal1.isPinned
+            }
+
+            // Then apply selected sort
+            switch navigationState.sortOrder {
+            case .custom:
+                return portal1.sortIndex < portal2.sortIndex
+            case .dateAdded:
+                return portal1.dateAdded > portal2.dateAdded
+            case .recent:
+                let date1 = portal1.lastOpened ?? portal1.dateAdded
+                let date2 = portal2.lastOpened ?? portal2.dateAdded
+                return date1 > date2
+            case .name:
+                return portal1.name.localizedCaseInsensitiveCompare(portal2.name) == .orderedAscending
+            case .constellation:
+                // Sort by constellation order (first constellation a portal belongs to)
+                let index1 = constellationIndex(for: portal1)
+                let index2 = constellationIndex(for: portal2)
+                if index1 != index2 {
+                    return index1 < index2
+                }
+                // Within same constellation, sort by name
+                return portal1.name.localizedCaseInsensitiveCompare(portal2.name) == .orderedAscending
+            }
+        }
+    }
+
+    /// Returns the index of the first constellation containing this portal, or Int.max if none
+    private func constellationIndex(for portal: Portal) -> Int {
+        for (index, constellation) in constellationManager.constellations.enumerated() {
+            if constellation.portalIDs.contains(portal.id) {
+                return index
+            }
+        }
+        return Int.max // Portals not in any constellation go last
     }
 
     private var expandedTitle: String {
@@ -122,6 +177,108 @@ struct OrbContainerView: View {
             return nil
         }
         return constellation.color
+    }
+
+    /// Icon for the header capsule
+    private var headerIcon: String? {
+        switch navigationState.filterOption {
+        case .all:
+            return "square.grid.2x2"
+        case .pinned:
+            return "pin.fill"
+        case .constellation(let id):
+            guard let constellation = constellationManager.constellation(withID: id) else {
+                return "square.grid.2x2"
+            }
+            return constellation.icon
+        }
+    }
+
+    /// Color for the header capsule
+    private var headerColor: Color {
+        switch navigationState.filterOption {
+        case .all:
+            return .secondary
+        case .pinned:
+            return .orange
+        case .constellation(let id):
+            guard let constellation = constellationManager.constellation(withID: id) else {
+                return .secondary
+            }
+            return constellation.color
+        }
+    }
+
+    /// Whether we're in All view (not filtering by constellation)
+    private var isAllView: Bool {
+        if case .all = navigationState.filterOption {
+            return true
+        }
+        return false
+    }
+
+    /// Lookup function for per-portal constellation color (used in All view)
+    private var constellationColorForPortal: (Portal) -> Color? {
+        { portal in
+            // Find the first constellation containing this portal
+            for constellation in self.constellationManager.constellations {
+                if constellation.portalIDs.contains(portal.id) {
+                    return constellation.color
+                }
+            }
+            return nil // Portal not in any constellation
+        }
+    }
+
+    /// Whether we're sorted by constellation (show section headers)
+    private var isSortedByConstellation: Bool {
+        navigationState.sortOrder == .constellation
+    }
+
+    /// Constellation sections for grouped layout (only when sorted by constellation in All view)
+    private var constellationSections: [ConstellationSection]? {
+        guard isAllView && isSortedByConstellation else { return nil }
+
+        var sections: [ConstellationSection] = []
+        var assignedPortalIDs = Set<UUID>()
+
+        // Create a section for each constellation (in order)
+        for constellation in constellationManager.constellations {
+            let portalsInConstellation = visiblePortals.filter { portal in
+                constellation.portalIDs.contains(portal.id) && !assignedPortalIDs.contains(portal.id)
+            }
+
+            if !portalsInConstellation.isEmpty {
+                // Sort portals within constellation by name
+                let sortedPortals = portalsInConstellation.sorted {
+                    $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                }
+
+                sections.append(ConstellationSection(
+                    id: constellation.id,
+                    name: constellation.name,
+                    icon: constellation.icon,
+                    color: constellation.color,
+                    portals: sortedPortals
+                ))
+
+                // Mark these portals as assigned
+                for portal in portalsInConstellation {
+                    assignedPortalIDs.insert(portal.id)
+                }
+            }
+        }
+
+        // Add ungrouped portals (not in any constellation)
+        let ungroupedPortals = visiblePortals.filter { !assignedPortalIDs.contains($0.id) }
+        if !ungroupedPortals.isEmpty {
+            let sortedUngrouped = ungroupedPortals.sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+            sections.append(ConstellationSection.ungrouped(portals: sortedUngrouped))
+        }
+
+        return sections.isEmpty ? nil : sections
     }
 
     private func expand() {

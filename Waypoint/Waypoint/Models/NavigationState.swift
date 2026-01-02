@@ -40,6 +40,7 @@ enum SortOrder: String, CaseIterable {
     case dateAdded = "Date Added"
     case recent = "Recently Used"
     case name = "Name"
+    case constellation = "Constellation"
 
     var icon: String {
         switch self {
@@ -47,6 +48,7 @@ enum SortOrder: String, CaseIterable {
         case .dateAdded: return "calendar"
         case .recent: return "clock"
         case .name: return "textformat"
+        case .constellation: return "star.circle"
         }
     }
 }
