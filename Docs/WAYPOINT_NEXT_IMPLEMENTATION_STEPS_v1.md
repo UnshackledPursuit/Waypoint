@@ -133,11 +133,19 @@
 - `displayThumbnail` computed property ✅
 
 **Output:** Portals automatically display website favicons in List view and Orb view.
-**Status:** Completed (commit d916f73 on feature/favicon-service branch)
+**Status:** Completed (commits d916f73, f4e28fc)
+
+**Additional improvements (f4e28fc):**
+- Fixed Huggingface and similar sites by reordering favicon sources (DuckDuckGo first)
+- Added `Color.fromHost()` for consistent fallback colors based on URL host
+- Added `Portal.fallbackColor` and `Portal.avatarInitial` helpers
+- QuickStartPortalsView now shows styled initial avatars with gradient orbs
+- Duplicate detection triggers favicon fetch if portal missing thumbnail
+- AddPortalView form made more compact
 
 ---
 
-## Step 3.8 — Test Orb Tab Functionality 🔴 TODO
+## Step 3.8 — Test Orb Tab Functionality 🟡 Future
 
 **Goal:** Verify the scaffolded Orb views work correctly.
 
@@ -165,6 +173,20 @@
 - ✅ RTFD duplicate portal creation from Notes drops
 - ✅ Quick Add keyboard mic button (removed .keyboardType(.URL))
 - ✅ YouTube naming improvements
+
+---
+
+## Known Limitations (To Address in Future Phases)
+
+### Orb View Ornament Filters
+- Currently only "All" filter is available in the Orb view ornament
+- Constellation filters and other filter options not yet wired up
+- Will be addressed when building out full Orb Sacred Flow (Phase 4+)
+
+### AddPortalView Window Size
+- visionOS window sizing is controlled by system, not explicitly settable
+- Form made more compact but window size may still feel large
+- Consider using `.defaultSize()` modifier in WindowGroup if needed
 
 ---
 
