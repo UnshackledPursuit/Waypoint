@@ -651,76 +651,154 @@ struct PortalListView: View {
     // MARK: - Portal List
 
     private var portalListView: some View {
-        ScrollViewReader { proxy in
-            List {
-                ForEach(filteredAndSortedPortals) { portal in
-                    VStack(alignment: .leading, spacing: 8) {
-                        // Portal row with gesture-based interaction (no Button to avoid conflict)
-                        PortalRow(portal: portal)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                // Tap - open portal or dismiss micro-actions
-                                if let currentID = microActionsPortalID {
-                                    dismissMicroActions(for: currentID)
-                                } else {
-                                    openPortal(portal)
-                                }
-                            }
-                            .gesture(
-                                LongPressGesture(minimumDuration: 0.5)
-                                    .onEnded { _ in
-                                        // Long press - show micro-actions
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                            expandedConstellationPortalID = nil
-                                            microActionsPortalID = portal.id
-                                        }
-                                        scheduleMicroActionsDismiss(for: portal.id)
-                                    }
-                            )
+        GeometryReader { geometry in
+            let layout = calculateListLayout(size: geometry.size)
 
-                        // Micro-actions - NO parent gestures interfere
-                        if microActionsPortalID == portal.id {
-                            microActionsView(for: portal)
-                                .transition(.scale.combined(with: .opacity))
+            ScrollViewReader { proxy in
+                ScrollView {
+                    if layout.columns == 1 {
+                        // Single column - vertical list style
+                        LazyVStack(spacing: 2) {
+                            ForEach(filteredAndSortedPortals) { portal in
+                                portalListItem(portal: portal)
+                                    .id(portal.id)
+                            }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                    } else {
+                        // Multi-column grid
+                        LazyVGrid(
+                            columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: layout.columns),
+                            spacing: 12
+                        ) {
+                            ForEach(filteredAndSortedPortals) { portal in
+                                portalGridItem(portal: portal)
+                                    .id(portal.id)
+                            }
+                        }
+                        .padding(16)
                     }
-                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
-                    .id(portal.id)
                 }
-                // TEMPORARILY DISABLED: onMove conflicts with long-press gesture
-                // .onMove { source, destination in
-                //     // Allow move in custom sort mode for any filter
-                //     if sortOrder == .custom {
-                //         portalManager.movePortals(from: source, to: destination, in: filteredAndSortedPortals)
-                //     }
-                // }
-            }
-            // TEMPORARILY DISABLED: Edit mode conflicts with long-press gesture
-            // .environment(\.editMode, $editMode)
-            // .onChange(of: sortOrder) { _, newValue in
-            //     withAnimation {
-            //         editMode = newValue == .custom ? .active : .inactive
-            //     }
-            // }
-            // .onAppear {
-            //     editMode = sortOrder == .custom ? .active : .inactive
-            // }
-            .onChange(of: focusRequestPortalID) { _, portalID in
-                guard let portalID else { return }
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    proxy.scrollTo(portalID, anchor: .top)
+                .onChange(of: focusRequestPortalID) { _, portalID in
+                    guard let portalID else { return }
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo(portalID, anchor: .top)
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showMicroActions(for: portalID)
+                    }
                 }
-                // Delay micro actions until scroll animation settles
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    showMicroActions(for: portalID)
+                .onChange(of: dismissMicroActionsPortalID) { _, portalID in
+                    guard let portalID else { return }
+                    dismissMicroActions(for: portalID)
+                    dismissMicroActionsPortalID = nil
                 }
-            }
-            .onChange(of: dismissMicroActionsPortalID) { _, portalID in
-                guard let portalID else { return }
-                dismissMicroActions(for: portalID)
-                dismissMicroActionsPortalID = nil
             }
         }
+    }
+
+    // MARK: - Layout Calculation
+
+    private struct ListLayout {
+        let columns: Int
+        let isCompact: Bool
+    }
+
+    private func calculateListLayout(size: CGSize) -> ListLayout {
+        let width = size.width
+
+        // Flexible 1-4 columns based on width
+        // Each column needs ~220pt minimum for comfortable reading
+        if width > 880 {
+            return ListLayout(columns: 4, isCompact: false)
+        } else if width > 660 {
+            return ListLayout(columns: 3, isCompact: false)
+        } else if width > 440 {
+            return ListLayout(columns: 2, isCompact: false)
+        }
+
+        // Single column for narrow views
+        return ListLayout(columns: 1, isCompact: width < 350)
+    }
+
+    // MARK: - Single Column List Item
+
+    @ViewBuilder
+    private func portalListItem(portal: Portal) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            PortalRow(portal: portal)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if let currentID = microActionsPortalID {
+                        dismissMicroActions(for: currentID)
+                    } else {
+                        openPortal(portal)
+                    }
+                }
+                .gesture(
+                    LongPressGesture(minimumDuration: 0.5)
+                        .onEnded { _ in
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                expandedConstellationPortalID = nil
+                                microActionsPortalID = portal.id
+                            }
+                            scheduleMicroActionsDismiss(for: portal.id)
+                        }
+                )
+
+            if microActionsPortalID == portal.id {
+                microActionsView(for: portal)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        #if os(visionOS)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        #else
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        #endif
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
+    }
+
+    // MARK: - Grid Item (Multi-column)
+
+    @ViewBuilder
+    private func portalGridItem(portal: Portal) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            PortalRow(portal: portal)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if let currentID = microActionsPortalID {
+                        dismissMicroActions(for: currentID)
+                    } else {
+                        openPortal(portal)
+                    }
+                }
+                .gesture(
+                    LongPressGesture(minimumDuration: 0.5)
+                        .onEnded { _ in
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                expandedConstellationPortalID = nil
+                                microActionsPortalID = portal.id
+                            }
+                            scheduleMicroActionsDismiss(for: portal.id)
+                        }
+                )
+
+            if microActionsPortalID == portal.id {
+                microActionsView(for: portal)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .padding(12)
+        #if os(visionOS)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        #else
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        #endif
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
     }
     
     // MARK: - Filtered & Sorted Portals
@@ -1163,8 +1241,20 @@ struct PortalRow: View {
     /// Global orb color mode
     @AppStorage("orbColorMode") private var orbColorModeRaw: String = OrbColorMode.defaultStyle.rawValue
 
+    /// Global orb size preference
+    @AppStorage("orbSizePreference") private var orbSizeRaw: String = "medium"
+
     private var orbColorMode: OrbColorMode {
         OrbColorMode(rawValue: orbColorModeRaw) ?? .defaultStyle
+    }
+
+    /// Icon size based on orb size preference
+    private var iconSize: CGFloat {
+        switch orbSizeRaw {
+        case "small": return 28    // compact
+        case "large": return 44    // original-ish
+        default: return 36         // medium (default)
+        }
     }
 
     /// Opacity multiplier based on intensity
@@ -1215,24 +1305,15 @@ struct PortalRow: View {
         HStack(spacing: 12) {
             // Thumbnail or placeholder
             thumbnailView
-                .frame(width: 40, height: 40)
+                .frame(width: iconSize, height: iconSize)
                 .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: iconSize * 0.2))
 
             // Portal info
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(portal.name)
                     .font(.headline)
-
-                if let lastOpened = portal.lastOpened {
-                    Text("Last opened: \(lastOpened, formatter: relativeFormatter)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Added \(portal.dateAdded, formatter: relativeFormatter)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                    .lineLimit(1)
             }
 
             Spacer()
@@ -1294,8 +1375,8 @@ struct PortalRow: View {
                             center: .center
                         )
                     )
-                    .frame(width: 50, height: 50)
-                    .blur(radius: 8)
+                    .frame(width: iconSize * 1.25, height: iconSize * 1.25)
+                    .blur(radius: iconSize * 0.2)
             } else {
                 // Single color glow
                 Circle()
@@ -1307,11 +1388,11 @@ struct PortalRow: View {
                                 Color.clear
                             ],
                             center: .center,
-                            startRadius: 12,
-                            endRadius: 28
+                            startRadius: iconSize * 0.3,
+                            endRadius: iconSize * 0.7
                         )
                     )
-                    .frame(width: 50, height: 50)
+                    .frame(width: iconSize * 1.25, height: iconSize * 1.25)
             }
 
             // Main orb content
@@ -1442,20 +1523,20 @@ struct PortalRow: View {
                         lineWidth: 1
                     )
             }
-            .frame(width: 40, height: 40)
-            .shadow(color: color.opacity(0.4 * colorOpacity), radius: 6, y: 3)
+            .frame(width: iconSize, height: iconSize)
+            .shadow(color: color.opacity(0.4 * colorOpacity), radius: iconSize * 0.15, y: iconSize * 0.075)
 
             // Source badge for non-web portals
             if portal.type.showSourceBadge {
                 Circle()
                     .fill(.ultraThickMaterial)
-                    .frame(width: 16, height: 16)
+                    .frame(width: iconSize * 0.4, height: iconSize * 0.4)
                     .overlay(
                         Image(systemName: portal.type.iconName)
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: iconSize * 0.22, weight: .bold))
                             .foregroundStyle(portal.displayColor)
                     )
-                    .offset(x: 16, y: 16)
+                    .offset(x: iconSize * 0.4, y: iconSize * 0.4)
             }
         }
     }

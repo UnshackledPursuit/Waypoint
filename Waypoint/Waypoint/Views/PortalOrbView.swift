@@ -441,9 +441,10 @@ struct PortalOrbView: View {
 
     @ViewBuilder
     private var orbContent: some View {
-        if let thumbnailData = portal.displayThumbnail,
+        if portal.useCustomStyle && portal.keepFaviconWithCustomStyle,
+           let thumbnailData = portal.displayThumbnail,
            let uiImage = UIImage(data: thumbnailData) {
-            // Show favicon/thumbnail with visibility enhancements
+            // Custom style with kept favicon
             Image(uiImage: uiImage)
                 .resizable()
                 .scaledToFit()
@@ -455,9 +456,46 @@ struct PortalOrbView: View {
                 )
                 .clipShape(Circle())
                 .shadow(color: Color.black.opacity(0.2), radius: 3, y: 1)
-                .saturation(shouldDesaturateContent ? 0 : 1) // Grayscale in mono mode
+                .saturation(shouldDesaturateContent ? 0 : 1)
+        } else if portal.useCustomStyle {
+            // Custom style - show icon or initials based on toggle
+            if portal.useIconInsteadOfInitials {
+                Image(systemName: portal.displayIcon)
+                    .font(.system(size: size * 0.32, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .shadow(color: effectiveColor.opacity(0.8 * colorOpacity), radius: 4)
+                    .shadow(color: Color.black.opacity(0.3), radius: 2, y: 1)
+            } else {
+                Text(portal.displayInitials)
+                    .font(.system(size: portal.displayInitials.count > 1 ? size * 0.24 : size * 0.32, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .shadow(color: effectiveColor.opacity(0.8 * colorOpacity), radius: 4)
+                    .shadow(color: Color.black.opacity(0.3), radius: 2, y: 1)
+            }
+        } else if let thumbnailData = portal.displayThumbnail,
+           let uiImage = UIImage(data: thumbnailData) {
+            // Show favicon/thumbnail
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size * 0.45, height: size * 0.45)
+                .background(
+                    Circle()
+                        .fill(Color.white.opacity(0.85))
+                        .frame(width: size * 0.5, height: size * 0.5)
+                )
+                .clipShape(Circle())
+                .shadow(color: Color.black.opacity(0.2), radius: 3, y: 1)
+                .saturation(shouldDesaturateContent ? 0 : 1)
+        } else if portal.type != .web {
+            // Non-web portals (iCloud, folder, PDF, etc.) - show type icon
+            Image(systemName: portal.type.iconName)
+                .font(.system(size: size * 0.32, weight: .semibold))
+                .foregroundStyle(.white)
+                .shadow(color: effectiveColor.opacity(0.8 * colorOpacity), radius: 4)
+                .shadow(color: Color.black.opacity(0.3), radius: 2, y: 1)
         } else {
-            // Fallback: First letter with enhanced visibility
+            // Web portals without favicon - first letter
             Text(portal.name.prefix(1).uppercased())
                 .font(.system(size: size * 0.32, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)

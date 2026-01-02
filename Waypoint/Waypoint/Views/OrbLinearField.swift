@@ -61,8 +61,17 @@ struct OrbLinearField: View {
 
     // MARK: - Layout Constants
 
-    /// Size of each orb (the PortalOrbView has internal padding for glow)
-    private let orbSize: CGFloat = 64
+    /// Orb size preference from user settings
+    @AppStorage("orbSizePreference") private var orbSizeRaw: String = "medium"
+
+    /// Size of each orb based on user preference
+    private var orbSize: CGFloat {
+        switch orbSizeRaw {
+        case "small": return 64 * 0.55     // ~35pt - compact
+        case "large": return 64 * 1.0      // 64pt - original
+        default: return 64 * 0.7           // medium = ~45pt (default)
+        }
+    }
     /// Spacing between orbs within a row/column
     private let orbSpacing: CGFloat = 16
     /// Spacing between rows (landscape) or columns (portrait)

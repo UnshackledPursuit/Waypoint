@@ -9,6 +9,45 @@ import SwiftUI
 
 #if os(visionOS)
 
+// MARK: - Orb Size Enum
+
+enum OrbSize: String, CaseIterable {
+    case small = "small"
+    case medium = "medium"
+    case large = "large"
+
+    var displayName: String {
+        switch self {
+        case .small: return "S"
+        case .medium: return "M"
+        case .large: return "L"
+        }
+    }
+
+    /// Icon representing size (small to large circles)
+    var icon: String {
+        switch self {
+        case .small: return "circle"
+        case .medium: return "circle.inset.filled"
+        case .large: return "circle.fill"
+        }
+    }
+
+    /// Multiplier applied to base orb size (64pt)
+    var multiplier: CGFloat {
+        switch self {
+        case .small: return 0.55   // ~35pt - compact
+        case .medium: return 0.7   // ~45pt - balanced
+        case .large: return 1.0    // 64pt - original
+        }
+    }
+
+    /// Computed size based on base 64pt
+    var size: CGFloat {
+        64 * multiplier
+    }
+}
+
 // MARK: - Left Ornament
 
 /// Left floating ornament - tabs + quick actions + intensity slider
@@ -30,10 +69,20 @@ struct WaypointLeftOrnament: View {
     /// Global orb color mode
     @AppStorage("orbColorMode") private var orbColorModeRaw: String = OrbColorMode.defaultStyle.rawValue
 
+    /// Global orb size preference
+    @AppStorage("orbSizePreference") private var orbSizeRaw: String = OrbSize.medium.rawValue
+
     private var orbColorMode: Binding<OrbColorMode> {
         Binding(
             get: { OrbColorMode(rawValue: orbColorModeRaw) ?? .defaultStyle },
             set: { orbColorModeRaw = $0.rawValue }
+        )
+    }
+
+    private var orbSize: Binding<OrbSize> {
+        Binding(
+            get: { OrbSize(rawValue: orbSizeRaw) ?? .medium },
+            set: { orbSizeRaw = $0.rawValue }
         )
     }
 
@@ -82,8 +131,11 @@ struct WaypointLeftOrnament: View {
             // Collapsible intensity control
             IntensityControl(intensity: $orbIntensity)
 
-            // Color mode toggle (horizontal 3-way)
+            // Color mode toggle (vertical 4-way)
             ColorModeToggle(colorMode: orbColorMode)
+
+            // Orb size picker
+            OrbSizeToggle(orbSize: orbSize)
         }
         .padding(6)
         .glassBackgroundEffect()
@@ -430,6 +482,98 @@ private struct ColorModeButton: View {
         case .defaultStyle: return .blue
         case .frost: return .cyan
         case .mono: return .secondary
+        }
+    }
+}
+
+// MARK: - Orb Size Toggle (Collapsible Vertical 4-way)
+
+/// Collapsible vertical 4-way toggle for orb size
+/// Auto-collapses after inactivity, shows selected size when collapsed
+private struct OrbSizeToggle: View {
+    @Binding var orbSize: OrbSize
+    @State private var isExpanded = false
+    @State private var collapseWorkItem: DispatchWorkItem?
+
+    var body: some View {
+        VStack(spacing: 2) {
+            if isExpanded {
+                // Expanded: Show all 4 size options
+                ForEach(OrbSize.allCases, id: \.self) { size in
+                    OrbSizeButton(
+                        size: size,
+                        isSelected: orbSize == size,
+                        action: {
+                            orbSize = size
+                            scheduleCollapse()
+                        }
+                    )
+                }
+            } else {
+                // Collapsed: Show size icon (tap to expand)
+                Button {
+                    isExpanded = true
+                    scheduleCollapse()
+                } label: {
+                    Image(systemName: orbSize.icon)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 26, height: 26)
+                        .background(
+                            Circle()
+                                .fill(Color.secondary.opacity(0.15))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.secondary.opacity(0.15))
+        )
+        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+    }
+
+    private func scheduleCollapse() {
+        collapseWorkItem?.cancel()
+        let workItem = DispatchWorkItem {
+            withAnimation {
+                isExpanded = false
+            }
+        }
+        collapseWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0, execute: workItem)
+    }
+}
+
+private struct OrbSizeButton: View {
+    let size: OrbSize
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(size.displayName)
+                .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+                .foregroundStyle(isSelected ? .primary : .secondary)
+                .frame(width: 26, height: 26)
+                .background(
+                    Circle()
+                        .fill(isSelected ? Color.white.opacity(0.25) : (isHovering ? Color.white.opacity(0.1) : Color.clear))
+                )
+                .overlay(
+                    Circle()
+                        .stroke(isSelected ? Color.white.opacity(0.5) : Color.clear, lineWidth: 1.5)
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
         }
     }
 }
