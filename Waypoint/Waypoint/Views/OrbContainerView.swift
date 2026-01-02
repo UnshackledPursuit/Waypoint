@@ -14,6 +14,7 @@ struct OrbContainerView: View {
 
     @Environment(PortalManager.self) private var portalManager
     @Environment(ConstellationManager.self) private var constellationManager
+    @Environment(NavigationState.self) private var navigationState
     @ObservedObject var sceneState: OrbSceneState
     @State private var isDropTargeted = false
 
@@ -67,29 +68,50 @@ struct OrbContainerView: View {
             )
             .ignoresSafeArea()
         }
-        .onChange(of: sceneState.selectedConstellationID) { oldValue, newValue in
-            guard newValue != nil, sceneState.isExpanded == false else { return }
-            expand()
+        .onChange(of: navigationState.filterOption) { oldValue, newValue in
+            // Auto-expand when selecting a constellation
+            if case .constellation = newValue, sceneState.isExpanded == false {
+                expand()
+            }
         }
     }
 
     // MARK: - Data
 
     private var visiblePortals: [Portal] {
-        guard let selectedID = sceneState.selectedConstellationID,
-              let constellation = constellationManager.constellation(withID: selectedID) else {
+        // Use NavigationState for filtering (shared with bottom ornament)
+        switch navigationState.filterOption {
+        case .all:
             return portalManager.portals
+        case .pinned:
+            return portalManager.portals.filter { $0.isPinned }
+        case .constellation(let id):
+            guard let constellation = constellationManager.constellation(withID: id) else {
+                return portalManager.portals
+            }
+            return portalManager.portals.filter { constellation.portalIDs.contains($0.id) }
         }
-
-        return portalManager.portals.filter { constellation.portalIDs.contains($0.id) }
     }
 
     private var expandedTitle: String {
-        guard let selectedID = sceneState.selectedConstellationID,
-              let constellation = constellationManager.constellation(withID: selectedID) else {
+        switch navigationState.filterOption {
+        case .all:
             return "All Portals"
+        case .pinned:
+            return "Pinned"
+        case .constellation(let id):
+            guard let constellation = constellationManager.constellation(withID: id) else {
+                return "All Portals"
+            }
+            return constellation.name
         }
-        return constellation.name
+    }
+
+    private var selectedConstellationID: UUID? {
+        if case .constellation(let id) = navigationState.filterOption {
+            return id
+        }
+        return nil
     }
 
     private func expand() {
@@ -145,7 +167,7 @@ struct OrbContainerView: View {
     }
 
     private func addPortalToSelectedConstellation(_ portalID: UUID) {
-        guard let selectedID = sceneState.selectedConstellationID,
+        guard let selectedID = selectedConstellationID,
               let constellation = constellationManager.constellation(withID: selectedID) else {
             return
         }
@@ -160,5 +182,6 @@ struct OrbContainerView: View {
         OrbContainerView(sceneState: OrbSceneState())
             .environment(PortalManager())
             .environment(ConstellationManager())
+            .environment(NavigationState())
     }
 }

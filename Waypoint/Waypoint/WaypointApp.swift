@@ -84,7 +84,7 @@ struct WaypointApp: App {
                 }
             }
 #if os(visionOS)
-            // Left ornament: Quick actions + filters + constellations
+            // Left ornament: Quick actions + filters
             .ornament(visibility: .visible, attachmentAnchor: .scene(.leading), contentAlignment: .trailing) {
                 WaypointLeftOrnament()
                     .environment(portalManager)
@@ -95,6 +95,7 @@ struct WaypointApp: App {
             // Bottom ornament: Constellation quick-switch bar
             .ornament(visibility: .visible, attachmentAnchor: .scene(.bottom), contentAlignment: .top) {
                 WaypointBottomOrnament()
+                    .environment(portalManager)
                     .environment(navigationState)
                     .environment(constellationManager)
                     .padding(.top, 16) // Push further from window
