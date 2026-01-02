@@ -1,16 +1,18 @@
 # PROJECT STATUS — January 2026
 
 **Last Updated:** January 2, 2026
-**Branch:** feature/orb-revamp (merging to main)
-**Phase:** 2.6 Complete - Intensity & Color Mode System
+**Branch:** feature/orb-smart-grid
+**Phase:** 3.0 Complete - Orb Linear Focus & Constellation Grouping
 
 ---
 
 ## Executive Summary
 
-Waypoint List View is **production-ready**. The ornament system and Quick Add functionality have been refined through multiple iterations and now provide an excellent user experience for portal management and constellation organization.
+Both **List View** and **Orb View** are now **production-ready**. The orb revamp is complete with an adaptive linear layout system that auto-orients based on window dimensions.
 
-**Orb View requires a complete revamp** before it can be considered usable. The current implementation has positioning, scaling, and label overlap issues that make it non-functional for real use.
+**Next Phase Focus:**
+1. **Orb Micro-Actions** - Add context actions to orb nodes (radial arc menu)
+2. **Adaptive List View** - Auto-reorient list view like orb view does
 
 ---
 
@@ -78,49 +80,137 @@ Waypoint List View is **production-ready**. The ornament system and Quick Add fu
 
 ---
 
-## What Needs Work
+## What's Complete (continued)
 
-### Orb View (Critical - Requires Revamp)
+### Phase 3.0: Orb Linear Focus (Complete - Jan 2, 2026)
 
-**Current Issues:**
-1. Orb positioning algorithms produce overlapping orbs
-2. Labels pile up and become unreadable
-3. Orbs overflow container boundaries
-4. Layout modes (Arc, Spiral, Hemisphere) don't work correctly
-5. Scale is wrong relative to container size
-6. No clear visual hierarchy
+**OrbLinearField - Adaptive Smart Grid:**
+- Auto-detects orientation (landscape vs portrait)
+- Portrait: Multiple scrollable columns, scroll horizontally
+- Landscape: Multiple scrollable rows, scroll vertically
+- Dynamic padding for narrow views (12pt vs 24pt)
+- Smooth scroll indicators with fade and chevron
 
-**Root Causes:**
-- Layout calculations don't account for actual orb sizes
-- No collision detection or minimum spacing
-- Container size assumptions are incorrect
-- Trying to do too much (multiple layout modes) before one works
+**Constellation Grouping:**
+- ConstellationSection struct for grouped layout
+- Section headers with capsule labels (icon + name)
+- Responds to constellation color mode
+- Scrollable sections in both orientations
+- "Ungrouped" section for unassigned portals
+
+**Narrow View Support:**
+- OrbTopBar hides title in compact mode (icon-only)
+- isCompact parameter flows through component hierarchy
+- Dynamic padding reduces in narrow windows
+
+**Constellation Sort Option:**
+- Sort by constellation groups portals by membership
+- Visual section headers in All view
+- Ungrouped portals appear at end
 
 ---
 
-## Next Phase: Orb View Revamp
+## Next Phase: Feature Parity & Adaptive List
 
-### Vision (from user)
-> "For orb view, I want the window container to disappear. Just a couple ornaments and the orbs. That is the vision."
+### Phase 3.1: Orb Micro-Actions
 
-### Approach (agreed)
-1. **Linear first** - Make one layout work perfectly before adding others
-2. **Adaptive orientation** - Vertical when tall, horizontal when wide
-3. **Scrollable** - When orbs exceed space, scroll (not shrink/overlap)
-4. **Remove arbitrary limits** - No "8 orbs max" rule
-5. **First principles** - Rethink from scratch, not patch existing code
+**Goal:** Add context actions to orb nodes matching list view functionality
 
-### Key Documentation to Reference
-- `waypoint_spatial_graph_spec_v_1.md` - Core axioms and node model
-- `WAYPOINT_ORB_WORMHOLE_SWAP_v1.md` - Animation concepts for constellation switching
-- `decisions.md` - Binding product decisions
-- `build.md` - Phase discipline and guardrails
+**Design Vision:**
+- **Radial Arc Menu** - Actions wrap around a quarter of the orb (ideal)
+- **Fallback** - Standard context menu if radial is complex
 
-### Design Principles for Orb Revamp
+**Actions to Include:**
+- Open (primary tap - already works)
+- Edit
+- Pin/Unpin
+- Add to Constellation (submenu)
+- Delete
+
+**Technical Approach:**
+```
+PortalOrbView
+├── Orb visualization (existing)
+├── Label (existing)
+└── Radial Action Arc (NEW)
+    ├── Appears on long-press or secondary gesture
+    ├── 90° arc around orb (top-right quadrant)
+    ├── 3-5 action buttons in arc formation
+    └── Dismisses on selection or tap-away
+```
+
+**Considerations:**
+- visionOS spatial interactions (look + pinch)
+- Arc animation (fan out from orb)
+- Button sizing for spatial accuracy
+- Which quadrant works best ergonomically
+
+### Phase 3.2: Adaptive List View
+
+**Goal:** Auto-reorient list view based on window dimensions
+
+**Current List View:**
+- Fixed vertical layout
+- Good at narrow width (see attached image)
+- Doesn't adapt to landscape
+
+**Target Behavior:**
+- **Portrait (narrow):** Vertical list with full rows (current)
+- **Landscape (wide):** Horizontal list OR multi-column grid
+- **Maintain compact width:** Don't stretch rows to fill space
+
+**Design Options:**
+
+**Option A: Horizontal Scrolling List**
+```
+Landscape window:
+┌────────────────────────────────────────────────┐
+│ [Card] [Card] [Card] [Card] → scrolls →        │
+└────────────────────────────────────────────────┘
+```
+
+**Option B: Multi-Column Grid**
+```
+Landscape window:
+┌────────────────────────────────────────────────┐
+│ [Card] [Card] [Card]                           │
+│ [Card] [Card] [Card]                           │
+│ [Card] [Card] ...                              │
+└────────────────────────────────────────────────┘
+```
+
+**Option C: Narrow Column with Sections**
+```
+Landscape window (constellation sections):
+┌────────────────────────────────────────────────┐
+│ [Quick Access]  [AI Tools]    [Developer]      │
+│ ├─ Amazon       ├─ ChatGPT    ├─ GitHub        │
+│ ├─ Grok         ├─ Claude     ├─ Supabase      │
+│ └─ ...          └─ ...        └─ ...           │
+└────────────────────────────────────────────────┘
+```
+
+**Recommendation:** Option C aligns with orb view's constellation grouping.
+
+**Technical Approach:**
+```
+PortalListView
+├── GeometryReader (detect orientation)
+├── Portrait: Current VStack/List layout
+└── Landscape: HStack of constellation sections
+    ├── Each section is a vertical ScrollView
+    └── Mirrors OrbLinearField sectioned layout
+```
+
+---
+
+## Design Principles
+
 1. **2-second rule** - Must be able to launch any portal in ~2 seconds
 2. **Spatial first** - Not just a list in space, true spatial thinking
-3. **Nodes are first-class** - Everything important is a node/orb
-4. **Stability before complexity** - Ship working code, add features incrementally
+3. **Feature parity** - Both views should have equivalent capabilities
+4. **Adaptive layouts** - Both views auto-orient based on window size
+5. **Consistent grouping** - Constellation sections work in both views
 
 ---
 
@@ -128,10 +218,11 @@ Waypoint List View is **production-ready**. The ornament system and Quick Add fu
 
 ### Core Views
 - `PortalListView.swift` - Main list view (production ready)
-- `OrbContainerView.swift` - Orb view container (needs revamp)
-- `OrbFieldView.swift` - Orb layout rendering (needs revamp)
-- `OrbLayoutEngine.swift` - Layout calculations (needs revamp)
-- `PortalOrbView.swift` - Individual orb rendering (review needed)
+- `OrbContainerView.swift` - Orb view container (production ready)
+- `OrbLinearField.swift` - Adaptive smart grid layout (NEW - production ready)
+- `OrbExpandedView.swift` - Expanded orb view with top bar
+- `OrbTopBar.swift` - Capsule-style header with compact mode
+- `PortalOrbView.swift` - Individual orb rendering (needs micro-actions)
 
 ### Ornaments
 - `WaypointLeftOrnament.swift` - Tabs + quick actions
@@ -224,3 +315,15 @@ git push -u origin feature/orb-revamp
 - Full mono mode grayscale across entire app
 - Auto-collapse after inactivity
 - Multi-constellation gradient support
+
+### Phase 3.0: Orb Linear Focus & Constellation Grouping (Complete - Jan 2, 2026)
+- OrbLinearField adaptive smart grid (replaces broken OrbFieldView)
+- Auto-orientation: portrait columns, landscape rows
+- Multi-row/column support based on container size
+- Scrollable rows/columns with visual indicators
+- Constellation sort with section headers
+- ConstellationSection struct for grouped layouts
+- Capsule-style headers responding to color mode
+- Narrow view support (icon-only compact mode)
+- Dynamic padding (12pt narrow, 24pt normal)
+- Per-portal constellation color lookup in All view
