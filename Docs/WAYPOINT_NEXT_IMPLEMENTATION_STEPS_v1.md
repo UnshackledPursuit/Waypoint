@@ -110,6 +110,58 @@
 
 ---
 
+## Step 3.7 — FaviconService (Required before Wormhole) 🔴 TODO
+
+**Goal:** Fetch and cache favicons for web portals so orbs display actual icons instead of letter avatars.
+
+**Implementation:**
+1. Create `FaviconService.swift`:
+   - Async favicon fetch from Google Favicon API or direct site fetch
+   - In-memory + disk cache
+   - Dominant color extraction for orb glow
+2. Update `PortalManager` to trigger favicon fetch on portal creation
+3. Update portal `thumbnailData` field with fetched favicon
+
+**Portal model already has:**
+- `thumbnailData: Data?` - for auto-fetched favicon
+- `customThumbnail: Data?` - for user override
+- `displayThumbnail` computed property
+
+**Output:** Portals display website favicons in List view and Orb view.
+
+---
+
+## Step 3.8 — Test Orb Tab Functionality 🔴 TODO
+
+**Goal:** Verify the scaffolded Orb views work correctly.
+
+**Test checklist:**
+- [ ] Orb tab opens without crash
+- [ ] Constellations display as orbs in Hub
+- [ ] Pinch constellation → expands to show portal orbs
+- [ ] Pinch portal → launches URL
+- [ ] Back gesture → returns to Hub
+- [ ] Layout auto-switches by portal count (Linear/Arc/Spiral/Hemisphere)
+
+**Output:** Orb Sacred Flow works: Hub → Expand → Launch → Return
+
+---
+
+## Step 3.9 — Fix Custom Sort (Drag Handles) 🟡 OPTIONAL
+
+**Goal:** Re-enable drag-to-reorder portals without breaking long-press micro-actions.
+
+**Implementation:** Add dedicated drag handle icon on each PortalRow that initiates reorder.
+
+---
+
+## Already Fixed (in main, commit 7a78190):
+- ✅ RTFD duplicate portal creation from Notes drops
+- ✅ Quick Add keyboard mic button (removed .keyboardType(.URL))
+- ✅ YouTube naming improvements
+
+---
+
 ## Step 4 — Wormhole Swap (Linear layout only)
 Implement the constellation switch animation in Linear mode:
 - bottom portal swallow old
