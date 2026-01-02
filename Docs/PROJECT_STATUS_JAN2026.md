@@ -112,72 +112,15 @@ Both **List View** and **Orb View** are now **production-ready**. The orb revamp
 
 ## Next Phases (Priority Order)
 
-### 🔴 Phase 4: Orb Micro-Actions (HIGH PRIORITY)
+### ✅ Phase 4: Orb Micro-Actions (COMPLETE)
+Radial arc context menu on orbs - edit, pin, delete, add to constellation. Full feature parity with list view.
 
-**Goal:** Add context actions to orb nodes for feature parity with list view
-
-**Why Important:** Currently orbs only support tap-to-open. List view has full context menus (edit, pin, delete, add to constellation). This is a significant feature gap.
-
-**Design Vision:**
-- **Radial Arc Menu** - Actions wrap around a quarter of the orb (ideal)
-- **Fallback** - Standard context menu if radial is complex
-
-**Actions to Include:**
-- Open (primary tap - already works)
-- Edit
-- Pin/Unpin
-- Add to Constellation (submenu)
-- Delete
-
-**Technical Approach:**
-```
-PortalOrbView
-├── Orb visualization (existing)
-├── Label (existing)
-└── Context Menu or Radial Arc (NEW)
-    ├── Long-press or secondary gesture triggers
-    ├── 3-5 action buttons
-    └── Dismisses on selection or tap-away
-```
-
-**Considerations:**
-- visionOS spatial interactions (look + pinch)
-- Arc animation (fan out from orb) vs native context menu
-- Button sizing for spatial accuracy
-- Which quadrant works best ergonomically
+### ✅ Phase 5: Adaptive Layouts (COMPLETE)
+Both orb view and list view auto-reorient based on window dimensions. Constellation grouping works in both views.
 
 ---
 
-### 🟡 Phase 5: Adaptive List View (MEDIUM PRIORITY)
-
-**Goal:** Auto-reorient list view based on window dimensions (like orb view does)
-
-**Why Important:** Orb view adapts beautifully to window shape. List view is fixed vertical. Consistency matters.
-
-**Current List View:**
-- Fixed vertical layout
-- Good at narrow width
-- Doesn't adapt to landscape
-
-**Target Behavior:**
-- **Portrait (narrow):** Vertical list with full rows (current)
-- **Landscape (wide):** Multi-column constellation sections
-- **Maintain compact width:** Don't stretch rows to fill space
-
-**Recommended Design (Option C):**
-```
-Landscape window (constellation sections):
-┌────────────────────────────────────────────────┐
-│ [Quick Access]  [AI Tools]    [Developer]      │
-│ ├─ Amazon       ├─ ChatGPT    ├─ GitHub        │
-│ ├─ Grok         ├─ Claude     ├─ Supabase      │
-│ └─ ...          └─ ...        └─ ...           │
-└────────────────────────────────────────────────┘
-```
-
----
-
-### 🟢 Phase 6: Wormhole Swap Animation (FUTURE)
+### 🔴 Phase 6: Wormhole Swap Animation (NEXT)
 
 **Goal:** Dramatic constellation switching animation
 
@@ -188,7 +131,29 @@ Landscape window (constellation sections):
 - New constellation orbs spawn from top portal
 - Constellation color influences animation hue
 
-**Prerequisite:** Phases 4-5 should be stable first
+---
+
+### 🟡 Phase 7: Universe View (FUTURE)
+
+**Goal:** Strategic overview of all constellations in a volumetric window
+
+**Design Vision:**
+- Volumetric window (~1.3m × 1.0m × 0.5m)
+- Simplified constellation nodes (spheres with glow, not full orb detail)
+- Movable library overlay for portal assignment
+- Two-tier navigation: tap constellation node → opens detail window
+
+---
+
+### 🟢 Phase 8: Polish & App Store Prep (FUTURE)
+
+**Goal:** Final polish for App Store submission
+
+**Includes:**
+- Performance optimization
+- Onboarding flow
+- App Store assets and description
+- Bug fixes and edge cases
 
 ---
 
