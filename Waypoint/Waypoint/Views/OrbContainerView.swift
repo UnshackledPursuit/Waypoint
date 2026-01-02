@@ -18,6 +18,9 @@ struct OrbContainerView: View {
     @ObservedObject var sceneState: OrbSceneState
     @State private var isDropTargeted = false
 
+    // User preferences
+    @AppStorage("showSectionHeaders") private var showSectionHeaders: Bool = false
+
     // Micro-actions state
     @State private var portalToEdit: Portal?
     @State private var showCreateConstellation = false
@@ -296,9 +299,9 @@ struct OrbContainerView: View {
         navigationState.sortOrder == .constellation
     }
 
-    /// Constellation sections for grouped layout (only when sorted by constellation in All view)
+    /// Constellation sections for grouped layout (only when sorted by constellation in All view and headers enabled)
     private var constellationSections: [ConstellationSection]? {
-        guard isAllView && isSortedByConstellation else { return nil }
+        guard showSectionHeaders && isAllView && isSortedByConstellation else { return nil }
 
         var sections: [ConstellationSection] = []
         var assignedPortalIDs = Set<UUID>()

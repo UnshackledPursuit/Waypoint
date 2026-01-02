@@ -13,6 +13,7 @@ import SwiftUI
 
 /// Bottom floating ornament - filters and constellations
 /// Contains: All/Pinned | Constellations (scrollable) | Launch
+/// Auto-collapses to show only selected filter, expands on interaction
 struct WaypointBottomOrnament: View {
 
     // MARK: - Properties
@@ -22,6 +23,15 @@ struct WaypointBottomOrnament: View {
     @Environment(PortalManager.self) private var portalManager
 
     @State private var constellationToEdit: Constellation?
+
+    /// Whether the ornament is expanded (showing all controls)
+    @State private var isExpanded = true
+
+    /// Timer work item for auto-collapse
+    @State private var collapseWorkItem: DispatchWorkItem?
+
+    /// Auto-collapse delay in seconds
+    private let collapseDelay: TimeInterval = 8.0
 
     /// Global orb color mode
     @AppStorage("orbColorMode") private var orbColorModeRaw: String = OrbColorMode.defaultStyle.rawValue
@@ -33,6 +43,29 @@ struct WaypointBottomOrnament: View {
     // MARK: - Body
 
     var body: some View {
+        Group {
+            if isExpanded {
+                expandedContent
+            } else {
+                collapsedContent
+            }
+        }
+        .onHover { hovering in
+            if hovering {
+                expand()
+            }
+        }
+        .onAppear {
+            scheduleCollapse()
+        }
+        .sheet(item: $constellationToEdit) { constellation in
+            EditConstellationView(constellation: constellation)
+        }
+    }
+
+    // MARK: - Expanded Content
+
+    private var expandedContent: some View {
         HStack(spacing: 6) {
             // Filters
             filterSection
@@ -49,13 +82,15 @@ struct WaypointBottomOrnament: View {
                             isMonoMode: isMonoMode,
                             onTap: {
                                 navigationState.selectConstellation(constellation)
+                                scheduleCollapse()
                             },
                             onEdit: {
                                 constellationToEdit = constellation
                             },
                             onLaunch: {
                                 launchConstellation(constellation)
-                            }
+                            },
+                            onInteraction: scheduleCollapse
                         )
                     }
                 }
@@ -71,9 +106,118 @@ struct WaypointBottomOrnament: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .glassBackgroundEffect()
-        .sheet(item: $constellationToEdit) { constellation in
-            EditConstellationView(constellation: constellation)
+    }
+
+    // MARK: - Collapsed Content
+
+    private var collapsedContent: some View {
+        Button {
+            expand()
+        } label: {
+            HStack(spacing: 6) {
+                selectedFilterIndicator
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .glassBackgroundEffect()
         }
+        .buttonStyle(.plain)
+    }
+
+    /// Shows the currently selected filter in collapsed state
+    @ViewBuilder
+    private var selectedFilterIndicator: some View {
+        switch navigationState.filterOption {
+        case .all:
+            // All filter - just icon
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.25))
+                    .frame(width: 36, height: 36)
+
+                Circle()
+                    .stroke(Color.white.opacity(0.5), lineWidth: 1.5)
+                    .frame(width: 36, height: 36)
+
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.primary)
+            }
+
+        case .pinned:
+            // Pinned filter - just icon
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.25))
+                    .frame(width: 36, height: 36)
+
+                Circle()
+                    .stroke(Color.white.opacity(0.5), lineWidth: 1.5)
+                    .frame(width: 36, height: 36)
+
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.primary)
+            }
+
+        case .constellation(let id):
+            // Constellation - icon + name
+            if let constellation = constellationManager.constellation(withID: id) {
+                let effectiveColor = isMonoMode ? Color.secondary : constellation.color
+
+                HStack(spacing: 5) {
+                    ZStack {
+                        Circle()
+                            .fill(effectiveColor.opacity(0.5))
+                            .frame(width: 28, height: 28)
+
+                        Circle()
+                            .stroke(effectiveColor, lineWidth: 2)
+                            .frame(width: 28, height: 28)
+
+                        Image(systemName: constellation.icon)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(effectiveColor)
+                    }
+
+                    Text(constellation.name)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(effectiveColor.opacity(0.2))
+                )
+            }
+        }
+    }
+
+    // MARK: - Collapse/Expand
+
+    private func expand() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            isExpanded = true
+        }
+        scheduleCollapse()
+    }
+
+    private func collapse() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            isExpanded = false
+        }
+    }
+
+    private func scheduleCollapse() {
+        collapseWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [self] in
+            collapse()
+        }
+        collapseWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + collapseDelay, execute: workItem)
     }
 
     // MARK: - Filter Section
@@ -87,13 +231,16 @@ struct WaypointBottomOrnament: View {
                 action: {
                     navigationState.filterOption = .all
                     navigationState.selectedConstellationID = nil
-                }
+                    scheduleCollapse()
+                },
+                onInteraction: scheduleCollapse
             )
             .contextMenu {
                 // Sort options as immediate actions (not submenu)
                 ForEach(SortOrder.allCases, id: \.self) { order in
                     Button {
                         navigationState.sortOrder = order
+                        scheduleCollapse()
                     } label: {
                         Label(order.rawValue, systemImage: navigationState.sortOrder == order ? "checkmark" : order.icon)
                     }
@@ -105,7 +252,9 @@ struct WaypointBottomOrnament: View {
                 isSelected: navigationState.filterOption == .pinned,
                 action: {
                     navigationState.filterOption = .pinned
-                }
+                    scheduleCollapse()
+                },
+                onInteraction: scheduleCollapse
             )
         }
     }
@@ -185,6 +334,7 @@ private struct CompactPillButton: View {
     let icon: String
     var isSelected: Bool = false
     let action: () -> Void
+    var onInteraction: (() -> Void)? = nil
 
     @State private var isHovering = false
 
@@ -211,6 +361,9 @@ private struct CompactPillButton: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
+            if hovering {
+                onInteraction?()
+            }
         }
     }
 }
@@ -224,6 +377,7 @@ private struct ConstellationPill: View {
     let onTap: () -> Void
     let onEdit: () -> Void
     let onLaunch: () -> Void
+    var onInteraction: (() -> Void)? = nil
 
     @State private var isHovering = false
 
@@ -286,6 +440,9 @@ private struct ConstellationPill: View {
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
+            }
+            if hovering {
+                onInteraction?()
             }
         }
     }

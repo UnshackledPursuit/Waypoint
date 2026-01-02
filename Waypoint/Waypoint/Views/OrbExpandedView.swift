@@ -36,14 +36,7 @@ struct OrbExpandedView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            OrbTopBar(
-                title: title,
-                icon: icon,
-                color: headerColor,
-                onBack: onBack,
-                trailing: nil,
-                isCompact: isCompact
-            )
+            // Header removed - bottom ornament shows current constellation
 
             OrbLinearField(
                 portals: portals,

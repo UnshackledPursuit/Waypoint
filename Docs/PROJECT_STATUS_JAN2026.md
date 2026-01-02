@@ -1,8 +1,8 @@
 # PROJECT STATUS — January 2026
 
 **Last Updated:** January 2, 2026
-**Branch:** feature/orb-smart-grid
-**Phase:** 3.0 Complete - Orb Linear Focus & Constellation Grouping
+**Branch:** phase3-orb-scaffold
+**Phase:** 3.0+ Complete - Orb Polish & Ornament Auto-Collapse
 
 ---
 
@@ -110,11 +110,13 @@ Both **List View** and **Orb View** are now **production-ready**. The orb revamp
 
 ---
 
-## Next Phase: Feature Parity & Adaptive List
+## Next Phases (Priority Order)
 
-### Phase 3.1: Orb Micro-Actions
+### 🔴 Phase 4: Orb Micro-Actions (HIGH PRIORITY)
 
-**Goal:** Add context actions to orb nodes matching list view functionality
+**Goal:** Add context actions to orb nodes for feature parity with list view
+
+**Why Important:** Currently orbs only support tap-to-open. List view has full context menus (edit, pin, delete, add to constellation). This is a significant feature gap.
 
 **Design Vision:**
 - **Radial Arc Menu** - Actions wrap around a quarter of the orb (ideal)
@@ -132,54 +134,37 @@ Both **List View** and **Orb View** are now **production-ready**. The orb revamp
 PortalOrbView
 ├── Orb visualization (existing)
 ├── Label (existing)
-└── Radial Action Arc (NEW)
-    ├── Appears on long-press or secondary gesture
-    ├── 90° arc around orb (top-right quadrant)
-    ├── 3-5 action buttons in arc formation
+└── Context Menu or Radial Arc (NEW)
+    ├── Long-press or secondary gesture triggers
+    ├── 3-5 action buttons
     └── Dismisses on selection or tap-away
 ```
 
 **Considerations:**
 - visionOS spatial interactions (look + pinch)
-- Arc animation (fan out from orb)
+- Arc animation (fan out from orb) vs native context menu
 - Button sizing for spatial accuracy
 - Which quadrant works best ergonomically
 
-### Phase 3.2: Adaptive List View
+---
 
-**Goal:** Auto-reorient list view based on window dimensions
+### 🟡 Phase 5: Adaptive List View (MEDIUM PRIORITY)
+
+**Goal:** Auto-reorient list view based on window dimensions (like orb view does)
+
+**Why Important:** Orb view adapts beautifully to window shape. List view is fixed vertical. Consistency matters.
 
 **Current List View:**
 - Fixed vertical layout
-- Good at narrow width (see attached image)
+- Good at narrow width
 - Doesn't adapt to landscape
 
 **Target Behavior:**
 - **Portrait (narrow):** Vertical list with full rows (current)
-- **Landscape (wide):** Horizontal list OR multi-column grid
+- **Landscape (wide):** Multi-column constellation sections
 - **Maintain compact width:** Don't stretch rows to fill space
 
-**Design Options:**
-
-**Option A: Horizontal Scrolling List**
-```
-Landscape window:
-┌────────────────────────────────────────────────┐
-│ [Card] [Card] [Card] [Card] → scrolls →        │
-└────────────────────────────────────────────────┘
-```
-
-**Option B: Multi-Column Grid**
-```
-Landscape window:
-┌────────────────────────────────────────────────┐
-│ [Card] [Card] [Card]                           │
-│ [Card] [Card] [Card]                           │
-│ [Card] [Card] ...                              │
-└────────────────────────────────────────────────┘
-```
-
-**Option C: Narrow Column with Sections**
+**Recommended Design (Option C):**
 ```
 Landscape window (constellation sections):
 ┌────────────────────────────────────────────────┐
@@ -190,17 +175,20 @@ Landscape window (constellation sections):
 └────────────────────────────────────────────────┘
 ```
 
-**Recommendation:** Option C aligns with orb view's constellation grouping.
+---
 
-**Technical Approach:**
-```
-PortalListView
-├── GeometryReader (detect orientation)
-├── Portrait: Current VStack/List layout
-└── Landscape: HStack of constellation sections
-    ├── Each section is a vertical ScrollView
-    └── Mirrors OrbLinearField sectioned layout
-```
+### 🟢 Phase 6: Wormhole Swap Animation (FUTURE)
+
+**Goal:** Dramatic constellation switching animation
+
+**Why Important:** Visual delight. Makes switching constellations feel magical.
+
+**Design Vision:**
+- Bottom portal "swallows" current orbs (spiral drain animation)
+- New constellation orbs spawn from top portal
+- Constellation color influences animation hue
+
+**Prerequisite:** Phases 4-5 should be stable first
 
 ---
 
@@ -290,14 +278,16 @@ git push -u origin feature/orb-revamp
 ## Future Features (Backlog)
 
 ### Ornament Enhancements
-- **Collapsible/Expand Toggle:** Add ability to collapse/expand ornaments on both left and bottom sides. When collapsed, show minimal indicator; tap to expand. Reduces visual clutter when not actively managing.
+- ~~**Collapsible/Expand Toggle:**~~ ✅ DONE - Both ornaments now auto-collapse
+- **Hover Labels for Icon Buttons:** Show labels on gaze for left ornament icons. Currently blocked by visionOS `onHover` limitations - doesn't reliably trigger custom content on gaze. Revisit when visionOS provides better hover API or use native tooltips if available.
+- **Duplicate Link Feedback:** When dropping a duplicate URL onto orb view, show visual feedback (currently silently ignores)
 
 ### Visual Effects & Immersion
 - **Environmental Glow:** In constellation mode, emit a subtle glow from the app that affects the visionOS environment. The constellation's color would cast ambient light into the user's space. Could combine with other aesthetic effects for a more immersive experience.
 
 ### Other Potential Features
 - Day/night environment toggle (requires visionOS API - currently not exposed)
-- Orb size preferences (user-configurable)
+- ~~Orb size preferences (user-configurable)~~ ✅ DONE - S/M/L toggle in left ornament
 - Animation customization (speed, style)
 
 ---
@@ -327,3 +317,16 @@ git push -u origin feature/orb-revamp
 - Narrow view support (icon-only compact mode)
 - Dynamic padding (12pt narrow, 24pt normal)
 - Per-portal constellation color lookup in All view
+
+### Phase 3.0+: Ornament Polish & Auto-Collapse (Complete - Jan 2, 2026)
+- **Ornament Auto-Collapse System:**
+  - Left ornament: Collapses to view toggle + ellipsis after 8 seconds inactivity
+  - Bottom ornament: Collapses to show only selected filter (icon for All/Pinned, icon+name for constellation)
+  - Both expand on hover/gaze or tap
+  - Interactions reset collapse timer
+- **Intensity Slider Improvements:**
+  - Auto-switches to constellation color mode when slider moved in mono/frost mode
+  - Continuous timer reset during drag interaction (prevents collapse while using)
+- **Removed constellation header from orb view** - Bottom ornament shows current selection
+- **Removed section headers toggle** - Ornament was getting crowded
+- **Simplified left ornament** - Clean icon buttons without hover labels (visionOS limitation)

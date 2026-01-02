@@ -50,8 +50,9 @@ enum OrbSize: String, CaseIterable {
 
 // MARK: - Left Ornament
 
-/// Left floating ornament - tabs + quick actions + intensity slider
-/// List/Orb tab switching + Paste/Add buttons + Global Intensity
+/// Left floating ornament with auto-collapse behavior
+/// Collapsed: View toggle only | Expanded: All controls
+/// Auto-collapses after 4 seconds, expands on hover/interaction
 struct WaypointLeftOrnament: View {
 
     // MARK: - Properties
@@ -62,6 +63,13 @@ struct WaypointLeftOrnament: View {
     @Environment(ConstellationManager.self) private var constellationManager
 
     @State private var showQuickAdd = false
+    @State private var showCreateConstellation = false
+    @State private var constellationToEdit: Constellation?
+
+    /// Whether the ornament is expanded (showing all controls)
+    @State private var isExpanded = false
+    /// Timer work item for auto-collapse
+    @State private var collapseWorkItem: DispatchWorkItem?
 
     /// Global orb intensity: 0.0 = neutral/frosted, 1.0 = vibrant colors
     @AppStorage("orbIntensity") private var orbIntensity: Double = 0.7
@@ -71,6 +79,9 @@ struct WaypointLeftOrnament: View {
 
     /// Global orb size preference
     @AppStorage("orbSizePreference") private var orbSizeRaw: String = OrbSize.medium.rawValue
+
+    /// Whether to show constellation section headers in grouped views
+    @AppStorage("showSectionHeaders") private var showSectionHeaders: Bool = false
 
     private var orbColorMode: Binding<OrbColorMode> {
         Binding(
@@ -86,62 +97,143 @@ struct WaypointLeftOrnament: View {
         )
     }
 
+    /// Auto-collapse delay in seconds
+    private let collapseDelay: TimeInterval = 8.0
+
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 4) {
-            // Tab switching
-            TabIconButton(
-                icon: "list.bullet",
-                isSelected: selectedTab == .list,
-                action: { selectedTab = .list }
-            )
+            // View mode toggle (always visible)
+            CompactViewToggle(selectedTab: $selectedTab, onInteraction: scheduleCollapse)
 
-            TabIconButton(
-                icon: "circle.grid.3x3",
-                isSelected: selectedTab == .orb,
-                action: { selectedTab = .orb }
-            )
+            if isExpanded {
+                // Divider
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 20, height: 1)
+                    .padding(.vertical, 2)
 
-            // Divider
-            Rectangle()
-                .fill(Color.secondary.opacity(0.3))
-                .frame(width: 20, height: 1)
-                .padding(.vertical, 2)
+                // Quick actions
+                TabIconButton(
+                    icon: "doc.on.clipboard",
+                    action: {
+                        quickPasteFromClipboard()
+                        scheduleCollapse()
+                    }
+                )
 
-            // Quick actions
-            TabIconButton(
-                icon: "doc.on.clipboard",
-                isSelected: false,
-                action: quickPasteFromClipboard
-            )
+                TabIconButton(
+                    icon: "link.badge.plus",
+                    action: {
+                        showQuickAdd = true
+                        scheduleCollapse()
+                    }
+                )
 
-            TabIconButton(
-                icon: "link.badge.plus",
-                isSelected: false,
-                action: { showQuickAdd = true }
-            )
+                // Divider before color controls
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 20, height: 1)
+                    .padding(.vertical, 2)
 
-            // Divider before color controls
-            Rectangle()
-                .fill(Color.secondary.opacity(0.3))
-                .frame(width: 20, height: 1)
-                .padding(.vertical, 2)
+                // Collapsible intensity control
+                IntensityControl(intensity: $orbIntensity, onInteraction: scheduleCollapse)
 
-            // Collapsible intensity control
-            IntensityControl(intensity: $orbIntensity)
+                // Color mode toggle (vertical 4-way)
+                ColorModeToggle(colorMode: orbColorMode, onInteraction: scheduleCollapse)
 
-            // Color mode toggle (vertical 4-way)
-            ColorModeToggle(colorMode: orbColorMode)
+                // Orb size picker
+                OrbSizeToggle(orbSize: orbSize, onInteraction: scheduleCollapse)
 
-            // Orb size picker
-            OrbSizeToggle(orbSize: orbSize)
+                // Divider before constellation controls
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 20, height: 1)
+                    .padding(.vertical, 2)
+
+                // Constellation edit (handles both edit and create)
+                TabIconButton(
+                    icon: "sparkles",
+                    action: {
+                        if let first = constellationManager.constellations.first {
+                            constellationToEdit = first
+                        } else {
+                            showCreateConstellation = true
+                        }
+                        scheduleCollapse()
+                    }
+                )
+
+                #if DEBUG
+                // Divider before debug controls
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 20, height: 1)
+                    .padding(.vertical, 2)
+
+                // Debug menu
+                DebugMenuButton(
+                    portalManager: portalManager,
+                    constellationManager: constellationManager,
+                    onInteraction: scheduleCollapse
+                )
+                #endif
+            } else {
+                // Collapsed: show expand button
+                Button {
+                    expand()
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.secondary.opacity(0.15)))
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(6)
         .glassBackgroundEffect()
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
+        .onHover { hovering in
+            if hovering {
+                expand()
+            }
+        }
         .sheet(isPresented: $showQuickAdd) {
             QuickAddSheet(activeConstellationID: selectedConstellationID)
         }
+        .sheet(isPresented: $showCreateConstellation) {
+            CreateConstellationView(initialPortal: nil)
+        }
+        .sheet(item: $constellationToEdit) { constellation in
+            EditConstellationView(constellation: constellation)
+        }
+    }
+
+    // MARK: - Expand/Collapse
+
+    private func expand() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            isExpanded = true
+        }
+        scheduleCollapse()
+    }
+
+    private func collapse() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            isExpanded = false
+        }
+    }
+
+    private func scheduleCollapse() {
+        collapseWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [self] in
+            collapse()
+        }
+        collapseWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + collapseDelay, execute: workItem)
     }
 
     // MARK: - Helpers
@@ -191,6 +283,42 @@ struct WaypointLeftOrnament: View {
     }
 }
 
+// MARK: - Compact View Toggle (List/Orb)
+
+/// Simple toggle for switching between List and Orb views
+/// Single button that shows current mode icon, tap to switch
+private struct CompactViewToggle: View {
+    @Binding var selectedTab: WaypointApp.AppTab
+    var onInteraction: (() -> Void)? = nil
+
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                selectedTab = selectedTab == .list ? .orb : .list
+            }
+            onInteraction?()
+        } label: {
+            ZStack {
+                // Background
+                Circle()
+                    .fill(Color.white.opacity(0.2))
+                    .frame(width: 32, height: 32)
+
+                Circle()
+                    .stroke(Color.white.opacity(0.4), lineWidth: 1.5)
+                    .frame(width: 32, height: 32)
+
+                // Icon morphs between modes
+                Image(systemName: selectedTab == .list ? "list.bullet" : "circle.grid.3x3")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Tab Icon Button
 
 private struct TabIconButton: View {
@@ -232,20 +360,27 @@ private struct TabIconButton: View {
 /// Collapsible intensity slider - tap button to expand slider
 /// When collapsed: subtle button that blends in
 /// When expanded: slider with improved interaction at extremes
+/// Auto-switches to color mode if intensity is changed while in mono/frost mode
 private struct IntensityControl: View {
     @Binding var intensity: Double
+    var onInteraction: (() -> Void)? = nil
     @State private var isExpanded = false
+    @State private var isDragging = false
 
     /// Color mode to determine if in mono mode
     @AppStorage("orbColorMode") private var orbColorModeRaw: String = OrbColorMode.defaultStyle.rawValue
 
-    private var isMonoMode: Bool {
-        OrbColorMode(rawValue: orbColorModeRaw) == .mono
+    private var currentColorMode: OrbColorMode {
+        OrbColorMode(rawValue: orbColorModeRaw) ?? .defaultStyle
+    }
+
+    private var isColorlessMode: Bool {
+        currentColorMode == .mono || currentColorMode == .frost
     }
 
     /// Slider fill color - subtle teal instead of purple
     private var sliderColor: Color {
-        if isMonoMode { return Color.gray }
+        if isColorlessMode { return Color.gray }
         return Color(red: 0.4, green: 0.7, blue: 0.8) // Soft teal
     }
 
@@ -272,6 +407,7 @@ private struct IntensityControl: View {
     private var collapsedButton: some View {
         Button {
             isExpanded = true
+            onInteraction?()
         } label: {
             ZStack {
                 // Subtle background - blends in with other buttons
@@ -294,7 +430,9 @@ private struct IntensityControl: View {
         VStack(spacing: 4) {
             // High intensity icon (tap to set max)
             Button {
+                switchToColorModeIfNeeded()
                 intensity = 1.0
+                onInteraction?()
             } label: {
                 Image(systemName: "sun.max.fill")
                     .font(.system(size: 12))
@@ -334,8 +472,19 @@ private struct IntensityControl: View {
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { value in
+                            if !isDragging {
+                                isDragging = true
+                                // Switch to color mode when starting to drag in colorless mode
+                                switchToColorModeIfNeeded()
+                            }
                             let newIntensity = 1.0 - (value.location.y / geo.size.height)
                             intensity = min(max(newIntensity, 0), 1)
+                            // Reset collapse timer on each drag change
+                            onInteraction?()
+                        }
+                        .onEnded { _ in
+                            isDragging = false
+                            onInteraction?()
                         }
                 )
             }
@@ -343,7 +492,9 @@ private struct IntensityControl: View {
 
             // Low intensity icon (tap to set min)
             Button {
+                switchToColorModeIfNeeded()
                 intensity = 0.0
+                onInteraction?()
             } label: {
                 Image(systemName: "snowflake")
                     .font(.system(size: 12))
@@ -355,6 +506,7 @@ private struct IntensityControl: View {
             // Close button - easy to hit
             Button {
                 isExpanded = false
+                onInteraction?()
             } label: {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 18))
@@ -370,6 +522,14 @@ private struct IntensityControl: View {
                 .fill(Color.black.opacity(0.2))
         )
     }
+
+    /// Switches to constellation color mode if currently in a colorless mode (mono/frost)
+    private func switchToColorModeIfNeeded() {
+        if isColorlessMode {
+            // Switch to constellation mode (most useful) when intensity is changed
+            orbColorModeRaw = OrbColorMode.constellation.rawValue
+        }
+    }
 }
 
 // MARK: - Color Mode Toggle (Collapsible Vertical 4-way)
@@ -378,6 +538,7 @@ private struct IntensityControl: View {
 /// Auto-collapses after inactivity, shows selected mode when collapsed
 private struct ColorModeToggle: View {
     @Binding var colorMode: OrbColorMode
+    var onInteraction: (() -> Void)? = nil
     @State private var isExpanded = false
     @State private var collapseWorkItem: DispatchWorkItem?
 
@@ -392,6 +553,7 @@ private struct ColorModeToggle: View {
                         action: {
                             colorMode = mode
                             scheduleCollapse()
+                            onInteraction?()
                         }
                     )
                 }
@@ -400,6 +562,7 @@ private struct ColorModeToggle: View {
                 Button {
                     isExpanded = true
                     scheduleCollapse()
+                    onInteraction?()
                 } label: {
                     Image(systemName: colorMode.icon)
                         .font(.system(size: 12, weight: .medium))
@@ -492,13 +655,14 @@ private struct ColorModeButton: View {
 /// Auto-collapses after inactivity, shows selected size when collapsed
 private struct OrbSizeToggle: View {
     @Binding var orbSize: OrbSize
+    var onInteraction: (() -> Void)? = nil
     @State private var isExpanded = false
     @State private var collapseWorkItem: DispatchWorkItem?
 
     var body: some View {
         VStack(spacing: 2) {
             if isExpanded {
-                // Expanded: Show all 4 size options
+                // Expanded: Show all 3 size options
                 ForEach(OrbSize.allCases, id: \.self) { size in
                     OrbSizeButton(
                         size: size,
@@ -506,6 +670,7 @@ private struct OrbSizeToggle: View {
                         action: {
                             orbSize = size
                             scheduleCollapse()
+                            onInteraction?()
                         }
                     )
                 }
@@ -514,6 +679,7 @@ private struct OrbSizeToggle: View {
                 Button {
                     isExpanded = true
                     scheduleCollapse()
+                    onInteraction?()
                 } label: {
                     Image(systemName: orbSize.icon)
                         .font(.system(size: 12, weight: .medium))
@@ -577,6 +743,109 @@ private struct OrbSizeButton: View {
         }
     }
 }
+
+// MARK: - Debug Menu Button
+
+#if DEBUG
+private struct DebugMenuButton: View {
+    let portalManager: PortalManager
+    let constellationManager: ConstellationManager
+    var onInteraction: (() -> Void)? = nil
+
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(spacing: 2) {
+            if isExpanded {
+                // Load Sample Data
+                Button {
+                    portalManager.loadSampleData()
+                    constellationManager.loadSampleData()
+                    isExpanded = false
+                    onInteraction?()
+                } label: {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.blue)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.blue.opacity(0.15)))
+                }
+                .buttonStyle(.plain)
+
+                // Clear Portals
+                Button {
+                    portalManager.clearAll()
+                    isExpanded = false
+                } label: {
+                    Image(systemName: "star.slash")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.orange)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.orange.opacity(0.15)))
+                }
+                .buttonStyle(.plain)
+
+                // Clear Constellations
+                Button {
+                    constellationManager.clearAll()
+                    isExpanded = false
+                } label: {
+                    Image(systemName: "sparkles.slash")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.purple)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.purple.opacity(0.15)))
+                }
+                .buttonStyle(.plain)
+
+                // Clear All
+                Button {
+                    portalManager.clearAll()
+                    constellationManager.clearAll()
+                    isExpanded = false
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.red)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.red.opacity(0.15)))
+                }
+                .buttonStyle(.plain)
+
+                // Close
+                Button {
+                    isExpanded = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.secondary.opacity(0.15)))
+                }
+                .buttonStyle(.plain)
+            } else {
+                // Collapsed - show debug icon
+                Button {
+                    isExpanded = true
+                } label: {
+                    Image(systemName: "ladybug")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.secondary.opacity(0.15)))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.secondary.opacity(0.15))
+        )
+        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+    }
+}
+#endif
 
 // MARK: - Quick Add Sheet
 
