@@ -53,18 +53,38 @@ struct QuickStartPortalsView: View {
                                     Button {
                                         toggleSelection(template.id)
                                     } label: {
-                                        HStack(spacing: 8) {
+                                        HStack(spacing: 10) {
+                                            // Styled initial avatar with host-based color
+                                            ZStack {
+                                                Circle()
+                                                    .fill(
+                                                        RadialGradient(
+                                                            colors: [
+                                                                colorForURL(template.url).opacity(0.9),
+                                                                colorForURL(template.url).opacity(0.6)
+                                                            ],
+                                                            center: .topLeading,
+                                                            startRadius: 0,
+                                                            endRadius: 20
+                                                        )
+                                                    )
+                                                    .frame(width: 28, height: 28)
+                                                    .shadow(color: colorForURL(template.url).opacity(0.4), radius: 3, y: 1)
+
+                                                Text(String(template.name.prefix(1)).uppercased())
+                                                    .font(.system(size: 13, weight: .semibold))
+                                                    .foregroundStyle(.white)
+                                            }
+
+                                            Text(template.name)
+                                                .font(.subheadline)
+                                                .foregroundStyle(.primary)
+
+                                            Spacer()
+
                                             Image(systemName: selectedPortals.contains(template.id) ? "checkmark.circle.fill" : "circle")
                                                 .foregroundStyle(selectedPortals.contains(template.id) ? .blue : .secondary)
-                                                .font(.system(size: 20))
-                                            
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(template.name)
-                                                    .font(.subheadline)
-                                                    .foregroundStyle(.primary)
-                                            }
-                                            
-                                            Spacer()
+                                                .font(.system(size: 18))
                                         }
                                     }
                                     .buttonStyle(.plain)
@@ -183,27 +203,35 @@ struct QuickStartPortalsView: View {
     }
     
     // MARK: - Utilities
-    
+
+    private func colorForURL(_ urlString: String) -> Color {
+        guard let url = URL(string: urlString),
+              let host = url.host else {
+            return .blue
+        }
+        return Color.fromHost(host)
+    }
+
     private func cleanURL(_ url: String) -> String {
         var cleaned = url
-        
+
         // Remove common prefixes for display
         if cleaned.hasPrefix("https://") {
             cleaned = String(cleaned.dropFirst(8))
         } else if cleaned.hasPrefix("http://") {
             cleaned = String(cleaned.dropFirst(7))
         }
-        
+
         // Remove www for cleaner display
         if cleaned.hasPrefix("www.") {
             cleaned = String(cleaned.dropFirst(4))
         }
-        
+
         // Remove trailing slash
         if cleaned.hasSuffix("/") {
             cleaned = String(cleaned.dropLast())
         }
-        
+
         return cleaned
     }
 }

@@ -527,6 +527,14 @@ struct PortalListView: View {
 
             // Scroll to and highlight the existing portal
             requestFocus(on: existingPortal.id)
+
+            // Trigger favicon fetch if existing portal doesn't have one
+            if existingPortal.thumbnailData == nil {
+                Task {
+                    await portalManager.fetchFavicon(for: existingPortal.id)
+                }
+            }
+
             print("📋 Quick Paste found existing: \(existingPortal.name)")
         } else if let portal = createPortalIfNeeded(from: validURL) {
             quickPastePortalName = portal.name
@@ -647,6 +655,15 @@ struct PortalListView: View {
 
         if newPortals.isEmpty, let duplicateID = duplicateIDs.first {
             requestFocus(on: duplicateID)
+
+            // Trigger favicon fetch for duplicate if it doesn't have one
+            if let existingPortal = portalManager.portal(withID: duplicateID),
+               existingPortal.thumbnailData == nil {
+                Task {
+                    await portalManager.fetchFavicon(for: duplicateID)
+                }
+            }
+
             print("🔁 Summoned existing portal from drop")
         }
     }

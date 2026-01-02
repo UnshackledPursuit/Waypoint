@@ -77,11 +77,10 @@ struct AddPortalView: View {
 
     private var formContent: some View {
         Form {
-            // Hero preview for edit mode
+            // Compact hero preview for edit mode
             if isEditing {
-                Section {
-                    portalHeroPreview
-                }
+                portalHeroPreview
+                    .listRowBackground(Color.clear)
             }
 
             Section {
@@ -90,7 +89,6 @@ struct AddPortalView: View {
                 HStack {
                     TextField("URL", text: $url, prompt: Text("youtube.com"))
                         .textContentType(.URL)
-                        .keyboardType(.URL)
                         .autocapitalization(.none)
                         .autocorrectionDisabled()
 
@@ -107,19 +105,19 @@ struct AddPortalView: View {
 
             // Constellation toggles (only show when editing existing portal)
             if let portal = editingPortal, !constellationManager.constellations.isEmpty {
-                Section {
+                Section("Constellations") {
                     constellationToggles(for: portal)
-                } header: {
-                    Text("Constellations")
                 }
             }
 
-            Section {
-                portalPreview
-            } header: {
-                Text("Preview")
+            // Only show preview for new portals (edit mode has hero)
+            if !isEditing {
+                Section("Preview") {
+                    portalPreview
+                }
             }
         }
+        .formStyle(.grouped)
     }
 
     @ViewBuilder
@@ -317,6 +315,14 @@ struct AddPortalView: View {
             if let existingPortal = portalManager.portals.first(where: { URLNormalizer.matches($0.url, cleanedURL) }) {
                 focusRequestPortalID?.wrappedValue = existingPortal.id
                 print("🔁 Portal already exists for this URL")
+
+                // Trigger favicon fetch if existing portal doesn't have one
+                if existingPortal.thumbnailData == nil {
+                    Task {
+                        await portalManager.fetchFavicon(for: existingPortal.id)
+                    }
+                }
+
                 dismiss()
                 return
             }

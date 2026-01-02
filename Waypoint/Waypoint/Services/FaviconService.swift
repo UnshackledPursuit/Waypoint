@@ -19,30 +19,37 @@ actor FaviconService {
 
     // MARK: - Properties
 
-    private let memoryCache = NSCache<NSString, UIImage>()
-    private let fileManager = FileManager.default
+    private let memoryCache: NSCache<NSString, UIImage>
+    private let fileManager: FileManager
     private let session: URLSession
-
-    private var cacheDirectory: URL? {
-        fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("Favicons")
-    }
+    private let cacheDirectoryURL: URL?
 
     // MARK: - Initialization
 
     private init() {
+        // Initialize all properties in nonisolated context
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 10
         config.timeoutIntervalForResource = 15
         self.session = URLSession(configuration: config)
 
+        self.fileManager = FileManager.default
+        self.cacheDirectoryURL = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("Favicons")
+
+        // Configure memory cache (NSCache is thread-safe)
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 100
+        cache.totalCostLimit = 50 * 1024 * 1024 // 50 MB
+        self.memoryCache = cache
+
         // Create cache directory if needed
-        if let cacheDir = cacheDirectory {
+        if let cacheDir = cacheDirectoryURL {
             try? fileManager.createDirectory(at: cacheDir, withIntermediateDirectories: true)
         }
+    }
 
-        // Configure memory cache
-        memoryCache.countLimit = 100
-        memoryCache.totalCostLimit = 50 * 1024 * 1024 // 50 MB
+    private var cacheDirectory: URL? {
+        cacheDirectoryURL
     }
 
     // MARK: - Public API
@@ -120,28 +127,28 @@ actor FaviconService {
     private func faviconSources(for host: String, originalURL: URL) -> [URL] {
         var sources: [URL] = []
 
-        // 1. Google Favicon Service (most reliable)
-        if let googleURL = URL(string: "https://www.google.com/s2/favicons?domain=\(host)&sz=128") {
-            sources.append(googleURL)
-        }
-
-        // 2. DuckDuckGo Icons API
+        // 1. DuckDuckGo Icons API (fast, reliable, no redirects)
         if let ddgURL = URL(string: "https://icons.duckduckgo.com/ip3/\(host).ico") {
             sources.append(ddgURL)
         }
 
-        // 3. Direct favicon.ico
+        // 2. Direct favicon.ico from site
         if let scheme = originalURL.scheme {
             if let directURL = URL(string: "\(scheme)://\(host)/favicon.ico") {
                 sources.append(directURL)
             }
         }
 
-        // 4. Apple touch icon (often higher quality)
+        // 3. Apple touch icon (often higher quality)
         if let scheme = originalURL.scheme {
             if let appleURL = URL(string: "\(scheme)://\(host)/apple-touch-icon.png") {
                 sources.append(appleURL)
             }
+        }
+
+        // 4. Google Favicon Service with redirect following
+        if let googleURL = URL(string: "https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://\(host)&size=128") {
+            sources.append(googleURL)
         }
 
         return sources
@@ -266,5 +273,49 @@ extension Portal {
             return nil
         }
         return await FaviconService.shared.extractDominantColor(from: thumbnailData)
+    }
+
+    /// Returns a consistent color based on the portal's URL host
+    var fallbackColor: Color {
+        guard let url = URL(string: self.url),
+              let host = url.host else {
+            return .blue
+        }
+        return Color.fromHost(host)
+    }
+
+    /// Returns the first letter of the name for avatar display
+    var avatarInitial: String {
+        String(name.prefix(1)).uppercased()
+    }
+}
+
+// MARK: - Color Extension for Host-based Colors
+
+extension Color {
+    /// Generates a consistent, vibrant color from a host string
+    static func fromHost(_ host: String) -> Color {
+        // Use hash to generate consistent colors
+        let hash = abs(host.hashValue)
+
+        // Predefined vibrant colors for better aesthetics
+        let vibrantColors: [Color] = [
+            Color(red: 0.96, green: 0.26, blue: 0.21),  // Red
+            Color(red: 0.91, green: 0.12, blue: 0.39),  // Pink
+            Color(red: 0.61, green: 0.15, blue: 0.69),  // Purple
+            Color(red: 0.40, green: 0.23, blue: 0.72),  // Deep Purple
+            Color(red: 0.25, green: 0.32, blue: 0.71),  // Indigo
+            Color(red: 0.13, green: 0.59, blue: 0.95),  // Blue
+            Color(red: 0.01, green: 0.66, blue: 0.96),  // Light Blue
+            Color(red: 0.00, green: 0.74, blue: 0.83),  // Cyan
+            Color(red: 0.00, green: 0.59, blue: 0.53),  // Teal
+            Color(red: 0.30, green: 0.69, blue: 0.31),  // Green
+            Color(red: 0.55, green: 0.76, blue: 0.29),  // Light Green
+            Color(red: 1.00, green: 0.76, blue: 0.03),  // Yellow
+            Color(red: 1.00, green: 0.60, blue: 0.00),  // Orange
+            Color(red: 1.00, green: 0.34, blue: 0.13),  // Deep Orange
+        ]
+
+        return vibrantColors[hash % vibrantColors.count]
     }
 }
