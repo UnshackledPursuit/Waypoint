@@ -34,6 +34,9 @@ struct PortalOrbView: View {
     @State private var showConstellationPicker = false
     @State private var microActionsWorkItem: DispatchWorkItem?
 
+    /// Notification name for dismissing all micro-action menus
+    private static let dismissAllMenusNotification = Notification.Name("DismissAllOrbMicroActions")
+
     /// Global orb intensity from user preferences (0.0 = neutral/frosted, 1.0 = vibrant)
     @AppStorage("orbIntensity") private var orbIntensity: Double = 0.7
 
@@ -99,7 +102,13 @@ struct PortalOrbView: View {
     // MARK: - Body
 
     var body: some View {
-        ZStack {
+        VStack(spacing: 4) {
+            // Micro-actions ABOVE the orb (horizontal)
+            if showMicroActions {
+                radialMicroActions
+                    .transition(.scale.combined(with: .opacity))
+            }
+
             // Main orb content
             orbBody
                 .contentShape(Circle())
@@ -114,6 +123,11 @@ struct PortalOrbView: View {
                     LongPressGesture(minimumDuration: 0.5)
                         .onEnded { _ in
                             guard microActionsEnabled else { return }
+                            // Dismiss all other menus first
+                            NotificationCenter.default.post(
+                                name: Self.dismissAllMenusNotification,
+                                object: portal.id
+                            )
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                 showMicroActions = true
                                 showConstellationPicker = false
@@ -121,16 +135,15 @@ struct PortalOrbView: View {
                             scheduleMicroActionsDismiss()
                         }
                 )
-
-            // Radial arc micro-actions overlay
-            if showMicroActions {
-                radialMicroActions
-                    .transition(.scale.combined(with: .opacity))
-            }
         }
-        .frame(width: size * 1.7, height: showMicroActions ? size * 2.8 : size * 1.8 + 20)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showMicroActions)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showConstellationPicker)
+        .onReceive(NotificationCenter.default.publisher(for: Self.dismissAllMenusNotification)) { notification in
+            // Dismiss this menu unless we're the one that sent the notification
+            if let senderID = notification.object as? UUID, senderID != portal.id {
+                dismissMicroActions()
+            }
+        }
     }
 
     // MARK: - Orb Body
@@ -256,144 +269,110 @@ struct PortalOrbView: View {
         .frame(width: size * 1.7)
     }
 
-    // MARK: - Radial Micro-Actions
+    // MARK: - Micro-Actions (horizontal bar above orb)
 
     private var radialMicroActions: some View {
-        VStack(spacing: 8) {
-            // Constellation picker (expands above actions)
+        Group {
             if showConstellationPicker {
+                // Constellation picker REPLACES main menu
                 constellationOrbitalPicker
                     .transition(.scale.combined(with: .opacity))
-            }
-
-            // Action arc - positioned below the orb
-            HStack(spacing: 10) {
-                // Constellation toggle
-                if !constellations.isEmpty || onCreateConstellation != nil {
-                    microActionButton(
-                        icon: portalConstellationIDs.isEmpty ? "sparkle" : "sparkles",
-                        color: .purple
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            showConstellationPicker.toggle()
-                            if showConstellationPicker {
+            } else {
+                // Main action buttons (horizontal)
+                HStack(spacing: 8) {
+                    // Constellation toggle button
+                    if !constellations.isEmpty || onCreateConstellation != nil {
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showConstellationPicker = true
                                 pauseAutoDismiss()
-                            } else {
-                                scheduleMicroActionsDismiss()
                             }
+                        } label: {
+                            Image(systemName: portalConstellationIDs.isEmpty ? "sparkle" : "sparkles")
+                                .font(.title3)
+                                .symbolVariant(.circle.fill)
+                                .symbolRenderingMode(.hierarchical)
                         }
+                        .buttonStyle(.plain)
                     }
-                }
 
-                // Pin toggle
-                if let onTogglePin {
-                    microActionButton(
-                        icon: portal.isPinned ? "pin.slash.fill" : "pin.fill",
-                        color: .orange
-                    ) {
-                        onTogglePin()
-                        scheduleMicroActionsDismiss()
+                    // Pin button
+                    if onTogglePin != nil {
+                        Button {
+                            onTogglePin?()
+                            scheduleMicroActionsDismiss()
+                        } label: {
+                            Image(systemName: portal.isPinned ? "mappin.slash" : "mappin")
+                                .font(.title3)
+                                .symbolVariant(.circle.fill)
+                                .symbolRenderingMode(.hierarchical)
+                        }
+                        .buttonStyle(.plain)
                     }
-                }
 
-                // Edit
-                if let onEdit {
-                    microActionButton(
-                        icon: "pencil",
-                        color: .blue
-                    ) {
+                    // Edit button
+                    if let onEdit {
+                        Button {
+                            dismissMicroActions()
+                            onEdit()
+                        } label: {
+                            Image(systemName: "pencil")
+                                .font(.title3)
+                                .symbolVariant(.circle.fill)
+                                .symbolRenderingMode(.hierarchical)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Delete button
+                    if let onDelete {
+                        Button {
+                            dismissMicroActions()
+                            onDelete()
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.title3)
+                                .symbolVariant(.circle.fill)
+                                .symbolRenderingMode(.hierarchical)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Done button (green checkmark)
+                    Button {
                         dismissMicroActions()
-                        onEdit()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.title3)
+                            .symbolVariant(.circle.fill)
+                            .foregroundStyle(.green)
                     }
+                    .buttonStyle(.plain)
                 }
-
-                // Delete
-                if let onDelete {
-                    microActionButton(
-                        icon: "trash",
-                        color: .red
-                    ) {
-                        dismissMicroActions()
-                        onDelete()
-                    }
-                }
-
-                // Done/dismiss
-                microActionButton(
-                    icon: "checkmark",
-                    color: .green
-                ) {
-                    dismissMicroActions()
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            #if os(visionOS)
-            .glassBackgroundEffect(in: Capsule())
-            #else
-            .background(.regularMaterial, in: Capsule())
-            #endif
-        }
-        .offset(y: size * 0.9 + 20) // Position below the orb
-    }
-
-    @ViewBuilder
-    private func microActionButton(icon: String, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.2))
-                    .frame(width: 36, height: 36)
-
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(color)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                #if os(visionOS)
+                .glassBackgroundEffect(in: Capsule())
+                #else
+                .background(.regularMaterial, in: Capsule())
+                #endif
             }
         }
-        .buttonStyle(.plain)
     }
 
-    // MARK: - Constellation Orbital Picker
+    // MARK: - Constellation Orbital Picker (horizontal bar above orb)
 
     private var constellationOrbitalPicker: some View {
-        HStack(spacing: 12) {
-            ForEach(constellations) { constellation in
-                let isAssigned = portalConstellationIDs.contains(constellation.id)
-
-                Button {
-                    onToggleConstellation?(constellation)
-                    // Don't dismiss, allow multiple toggles
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(constellation.color.opacity(isAssigned ? 1.0 : 0.6))
-                            .frame(width: 32, height: 32)
-                            .overlay(
-                                Circle()
-                                    .stroke(isAssigned ? Color.white : Color.clear, lineWidth: 2)
-                            )
-                            .shadow(color: constellation.color.opacity(isAssigned ? 0.5 : 0.2), radius: isAssigned ? 4 : 2)
-
-                        Image(systemName: constellation.icon)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white)
-
-                        // Checkmark badge when assigned
-                        if isAssigned {
-                            Circle()
-                                .fill(Color.green)
-                                .frame(width: 12, height: 12)
-                                .overlay(
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 7, weight: .bold))
-                                        .foregroundStyle(.white)
-                                )
-                                .offset(x: 10, y: 10)
-                        }
+        HStack(spacing: 8) {
+            // Scrollable constellation buttons (max 5 visible)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(constellations) { constellation in
+                        constellationButton(for: constellation)
                     }
                 }
-                .buttonStyle(.plain)
             }
+            .frame(maxWidth: 5 * 32) // ~5 buttons visible
 
             // Add new constellation
             if let onCreateConstellation {
@@ -401,25 +380,36 @@ struct PortalOrbView: View {
                     dismissMicroActions()
                     onCreateConstellation()
                 } label: {
-                    Circle()
-                        .fill(Color.secondary.opacity(0.2))
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Image(systemName: "plus")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                        )
+                    Image(systemName: "plus")
+                        .font(.title3)
+                        .symbolVariant(.circle)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .padding(.vertical, 8)
         #if os(visionOS)
         .glassBackgroundEffect(in: Capsule())
         #else
         .background(.regularMaterial, in: Capsule())
         #endif
+    }
+
+    /// Individual constellation button - uses constellation's color when assigned
+    private func constellationButton(for constellation: Constellation) -> some View {
+        let isAssigned = portalConstellationIDs.contains(constellation.id)
+
+        return Button {
+            onToggleConstellation?(constellation)
+        } label: {
+            Image(systemName: constellation.icon)
+                .font(.title3)
+                .symbolVariant(isAssigned ? .circle.fill : .circle)
+                .foregroundStyle(isAssigned ? constellation.color : .secondary)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Micro-Actions Timer

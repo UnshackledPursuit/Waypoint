@@ -37,7 +37,7 @@ struct OrbContainerView: View {
                         headerColor: headerColor,
                         portals: visiblePortals,
                         constellationColor: selectedConstellationColor,
-                        constellationColorForPortal: isAllView ? constellationColorForPortal : nil,
+                        constellationColorForPortal: shouldUsePerPortalColors ? constellationColorForPortal : nil,
                         constellationSections: constellationSections,
                         isCompact: isNarrow,
                         onBack: collapse,
@@ -69,7 +69,7 @@ struct OrbContainerView: View {
                     OrbLinearField(
                         portals: visiblePortals,
                         constellationColor: selectedConstellationColor,
-                        constellationColorForPortal: isAllView ? constellationColorForPortal : nil,
+                        constellationColorForPortal: shouldUsePerPortalColors ? constellationColorForPortal : nil,
                         constellationSections: constellationSections,
                         onOpen: { portal in
                             openPortal(portal)
@@ -268,6 +268,16 @@ struct OrbContainerView: View {
         return false
     }
 
+    /// Whether we should use per-portal constellation colors (All or Pinned view, not a specific constellation)
+    private var shouldUsePerPortalColors: Bool {
+        switch navigationState.filterOption {
+        case .all, .pinned:
+            return true
+        case .constellation:
+            return false
+        }
+    }
+
     /// Lookup function for per-portal constellation color (used in All view)
     private var constellationColorForPortal: (Portal) -> Color? {
         { portal in
@@ -300,9 +310,12 @@ struct OrbContainerView: View {
             }
 
             if !portalsInConstellation.isEmpty {
-                // Sort portals within constellation by name
-                let sortedPortals = portalsInConstellation.sorted {
-                    $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                // Sort portals within constellation: pinned first, then by name
+                let sortedPortals = portalsInConstellation.sorted { p1, p2 in
+                    if p1.isPinned != p2.isPinned {
+                        return p1.isPinned // Pinned items come first
+                    }
+                    return p1.name.localizedCaseInsensitiveCompare(p2.name) == .orderedAscending
                 }
 
                 sections.append(ConstellationSection(
@@ -323,8 +336,12 @@ struct OrbContainerView: View {
         // Add ungrouped portals (not in any constellation)
         let ungroupedPortals = visiblePortals.filter { !assignedPortalIDs.contains($0.id) }
         if !ungroupedPortals.isEmpty {
-            let sortedUngrouped = ungroupedPortals.sorted {
-                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            // Sort ungrouped: pinned first, then by name
+            let sortedUngrouped = ungroupedPortals.sorted { p1, p2 in
+                if p1.isPinned != p2.isPinned {
+                    return p1.isPinned // Pinned items come first
+                }
+                return p1.name.localizedCaseInsensitiveCompare(p2.name) == .orderedAscending
             }
             sections.append(ConstellationSection.ungrouped(portals: sortedUngrouped))
         }

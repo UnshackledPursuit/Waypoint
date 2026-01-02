@@ -25,6 +25,12 @@ struct CreateConstellationView: View {
         !displayName.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    /// Existing constellations the portal can be added to (not already in)
+    private var availableConstellations: [Constellation] {
+        guard let portal = initialPortal else { return [] }
+        return constellationManager.constellations.filter { !$0.portalIDs.contains(portal.id) }
+    }
+
     /// The name to use - custom if user typed, otherwise auto-generated
     private var displayName: String {
         if hasCustomName && !name.isEmpty {
@@ -33,21 +39,13 @@ struct CreateConstellationView: View {
         return iconNameSuggestions[selectedIcon] ?? "My Constellation"
     }
 
-    // MARK: - Icon Options (2 rows worth)
+    // MARK: - Icon Options (single row - matches EditConstellationView)
 
-    private let iconOptionsRow1 = [
+    private let iconOptions = [
         "star.fill", "heart.fill", "bolt.fill", "flame.fill", "sparkles",
-        "moon.fill", "sun.max.fill", "cloud.fill", "leaf.fill", "drop.fill"
+        "moon.fill", "sun.max.fill", "leaf.fill", "briefcase.fill", "book.fill",
+        "gamecontroller.fill", "music.note", "film.fill", "camera.fill", "house.fill"
     ]
-
-    private let iconOptionsRow2 = [
-        "briefcase.fill", "book.fill", "gamecontroller.fill", "music.note", "film.fill",
-        "camera.fill", "paintbrush.fill", "hammer.fill", "gearshape.fill", "house.fill"
-    ]
-
-    private var allIconOptions: [String] {
-        iconOptionsRow1 + iconOptionsRow2
-    }
 
     // MARK: - Icon to Name Mapping
 
@@ -85,39 +83,71 @@ struct CreateConstellationView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Hero Orb Preview (Large - Version B)
-                heroOrbPreview
-                    .padding(.top, 20)
-                    .padding(.bottom, 16)
-
-                // Compact Form (no scrolling needed)
-                VStack(spacing: 20) {
-                    // Name Field with inline preview (Version A option)
-                    nameFieldSection
-
-                    // Icon Selection (horizontal scroll, 2 rows)
-                    iconSelectionSection
-
-                    // Color Selection (horizontal scroll, 1 row)
-                    colorSelectionSection
-
-                    // Starting portal info
-                    if let portal = initialPortal {
-                        HStack {
-                            Image(systemName: "link")
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Quick Add to Existing (only if portal provided)
+                    if initialPortal != nil && !constellationManager.constellations.isEmpty {
+                        if availableConstellations.isEmpty {
+                            // Portal is already in all constellations
+                            Text("Already in all constellations")
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            Text("Starting with: \(portal.name)")
+                                .padding(.top, 8)
+                        } else {
+                            quickAddSection
+                        }
+
+                        // Divider between quick add and create new
+                        HStack {
+                            Rectangle()
+                                .fill(Color.secondary.opacity(0.3))
+                                .frame(height: 1)
+                            Text("or create new")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            Spacer()
+                            Rectangle()
+                                .fill(Color.secondary.opacity(0.3))
+                                .frame(height: 1)
                         }
                         .padding(.horizontal)
                     }
-                }
-                .padding(.horizontal)
 
-                Spacer()
+                    // Hero Orb Preview with name
+                    heroOrbPreview
+                        .padding(.top, 8)
+
+                    // Name Field - simple (matches EditConstellationView)
+                    TextField("Constellation Name", text: $name, prompt: Text(iconNameSuggestions[selectedIcon] ?? "Constellation Name"))
+                        .textFieldStyle(.roundedBorder)
+                        .padding(.horizontal)
+                        .onChange(of: name) { _, newValue in
+                            hasCustomName = !newValue.isEmpty
+                        }
+
+                    // Icon and Color in compact sections (matches EditConstellationView)
+                    VStack(spacing: 12) {
+                        iconSelectionSection
+                        colorSelectionSection
+                    }
+                    .padding(.horizontal)
+
+                    // Footer info
+                    VStack(spacing: 16) {
+                        if let portal = initialPortal {
+                            HStack {
+                                Image(systemName: "link")
+                                    .foregroundStyle(.tertiary)
+                                Text("Starting with: \(portal.name)")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                                Spacer()
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                }
+                .padding(.vertical)
             }
             .navigationTitle("New Constellation")
             .navigationBarTitleDisplayMode(.inline)
@@ -265,78 +295,23 @@ struct CreateConstellationView: View {
         }
     }
 
-    // MARK: - Name Field Section (with small inline preview - Version A)
 
-    private var nameFieldSection: some View {
-        HStack(spacing: 12) {
-            // Small inline orb preview (Version A)
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color.white.opacity(0.2),
-                                Color(hex: selectedColorHex).opacity(0.3)
-                            ],
-                            center: .topLeading,
-                            startRadius: 2,
-                            endRadius: 25
-                        )
-                    )
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                    )
-
-                Image(systemName: selectedIcon)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .shadow(color: Color(hex: selectedColorHex).opacity(0.8), radius: 3)
-            }
-
-            // Name text field - shows auto-suggestion, user types to replace
-            TextField("Name", text: $name, prompt: Text(iconNameSuggestions[selectedIcon] ?? "Constellation Name"))
-                .textFieldStyle(.roundedBorder)
-                .onChange(of: name) { _, newValue in
-                    hasCustomName = !newValue.isEmpty
-                }
-        }
-    }
-
-    // MARK: - Icon Selection (Horizontal Scroll, 2 Rows)
+    // MARK: - Icon Selection (matches EditConstellationView)
 
     private var iconSelectionSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Icon")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                VStack(spacing: 12) {
-                    // Row 1
-                    HStack(spacing: 12) {
-                        ForEach(iconOptionsRow1, id: \.self) { icon in
-                            iconButton(for: icon)
-                        }
-                    }
-
-                    // Row 2
-                    HStack(spacing: 12) {
-                        ForEach(iconOptionsRow2, id: \.self) { icon in
-                            iconButton(for: icon)
-                        }
-                    }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(iconOptions, id: \.self) { icon in
+                    iconButton(for: icon)
                 }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 8)
             }
+            .padding(.vertical, 4)
         }
     }
 
     private func iconButton(for icon: String) -> some View {
         Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(.easeInOut(duration: 0.15)) {
                 selectedIcon = icon
                 // Only auto-fill name if user hasn't customized it
                 if !hasCustomName {
@@ -345,16 +320,16 @@ struct CreateConstellationView: View {
             }
         } label: {
             Image(systemName: icon)
-                .font(.title2)
-                .frame(width: 48, height: 48)
+                .font(.system(size: 18))
+                .frame(width: 36, height: 36)
                 .background(
                     selectedIcon == icon
-                        ? Color(hex: selectedColorHex).opacity(0.3)
+                        ? Color(hex: selectedColorHex).opacity(0.4)
                         : Color.secondary.opacity(0.1)
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: 8)
                         .stroke(
                             selectedIcon == icon ? Color(hex: selectedColorHex) : Color.clear,
                             lineWidth: 2
@@ -362,63 +337,199 @@ struct CreateConstellationView: View {
                 )
         }
         .buttonStyle(.plain)
-        .scaleEffect(selectedIcon == icon ? 1.05 : 1.0)
     }
 
-    // MARK: - Color Selection (Horizontal Scroll + Color Picker)
+    // MARK: - Color Selection (matches EditConstellationView)
 
     private var colorSelectionSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Color")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        VStack(spacing: 8) {
+            // Centered color orbs with glass effects
+            HStack(spacing: 12) {
+                ForEach(colorOptions, id: \.self) { colorHex in
+                    colorOrbButton(for: colorHex)
+                }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    // Preset colors
-                    ForEach(colorOptions, id: \.self) { colorHex in
-                        Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                selectedColorHex = colorHex
-                            }
-                        } label: {
+                // Custom color picker styled as orb
+                ZStack {
+                    Circle()
+                        .fill(
+                            AngularGradient(
+                                colors: [.red, .orange, .yellow, .green, .blue, .purple, .red],
+                                center: .center
+                            )
+                        )
+                        .frame(width: 40, height: 40)
+                        .overlay(
                             Circle()
-                                .fill(Color(hex: colorHex))
-                                .frame(width: 44, height: 44)
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white, lineWidth: selectedColorHex == colorHex ? 3 : 0)
+                                .fill(
+                                    RadialGradient(
+                                        colors: [Color.white.opacity(0.4), Color.clear],
+                                        center: UnitPoint(x: 0.3, y: 0.3),
+                                        startRadius: 0,
+                                        endRadius: 15
+                                    )
                                 )
-                                .shadow(
-                                    color: selectedColorHex == colorHex
-                                        ? Color(hex: colorHex).opacity(0.5)
-                                        : .clear,
-                                    radius: 6
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .scaleEffect(selectedColorHex == colorHex ? 1.1 : 1.0)
-                    }
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        )
+                        .shadow(color: Color.purple.opacity(0.3), radius: 4, y: 2)
 
-                    // Custom color picker
                     ColorPicker("", selection: Binding(
                         get: { Color(hex: selectedColorHex) },
                         set: { newColor in
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                selectedColorHex = newColor.toHex() ?? selectedColorHex
-                            }
+                            selectedColorHex = newColor.toHex() ?? selectedColorHex
                         }
                     ), supportsOpacity: false)
                     .labelsHidden()
-                    .frame(width: 44, height: 44)
+                    .opacity(0.02)  // Nearly invisible but tappable
                 }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 8)
+                .frame(width: 40, height: 40)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
+    private func colorOrbButton(for colorHex: String) -> some View {
+        let color = Color(hex: colorHex)
+        let isSelected = selectedColorHex == colorHex
+
+        return Button {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                selectedColorHex = colorHex
+            }
+        } label: {
+            ZStack {
+                // Glow behind selected
+                if isSelected {
+                    Circle()
+                        .fill(color.opacity(0.4))
+                        .frame(width: 48, height: 48)
+                        .blur(radius: 6)
+                }
+
+                // Main color orb with gradient
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                color.opacity(0.6),
+                                color.opacity(0.85),
+                                color
+                            ],
+                            center: UnitPoint(x: 0.3, y: 0.3),
+                            startRadius: 0,
+                            endRadius: 20
+                        )
+                    )
+                    .frame(width: 40, height: 40)
+
+                // Top highlight for glass effect
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [Color.white.opacity(0.5), Color.clear],
+                            center: UnitPoint(x: 0.35, y: 0.25),
+                            startRadius: 0,
+                            endRadius: 12
+                        )
+                    )
+                    .frame(width: 40, height: 40)
+
+                // Selection ring
+                Circle()
+                    .stroke(
+                        isSelected ? Color.white : Color.white.opacity(0.2),
+                        lineWidth: isSelected ? 3 : 1
+                    )
+                    .frame(width: 40, height: 40)
+            }
+            .frame(width: 48, height: 48)
+            .shadow(color: color.opacity(isSelected ? 0.5 : 0.2), radius: isSelected ? 6 : 3, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Quick Add Section
+
+    private var quickAddSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Add to existing")
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(availableConstellations) { constellation in
+                        quickAddButton(for: constellation)
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private func quickAddButton(for constellation: Constellation) -> some View {
+        Button {
+            addToExisting(constellation)
+        } label: {
+            VStack(spacing: 6) {
+                // Mini orb with constellation color
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    constellation.color.opacity(0.3),
+                                    constellation.color.opacity(0.6)
+                                ],
+                                center: UnitPoint(x: 0.3, y: 0.3),
+                                startRadius: 0,
+                                endRadius: 20
+                            )
+                        )
+                        .frame(width: 44, height: 44)
+
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.white.opacity(0.5), Color.clear],
+                                center: UnitPoint(x: 0.3, y: 0.25),
+                                startRadius: 0,
+                                endRadius: 15
+                            )
+                        )
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: constellation.icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .shadow(color: constellation.color.opacity(0.8), radius: 3)
+                }
+                .shadow(color: constellation.color.opacity(0.3), radius: 4, y: 2)
+
+                Text(constellation.name)
+                    .font(.caption2)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            }
+            .frame(width: 60)
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Actions
+
+    private func addToExisting(_ constellation: Constellation) {
+        guard let portal = initialPortal else { return }
+        constellationManager.addPortal(portal.id, to: constellation)
+        print("✨ Added \(portal.name) to \(constellation.name)")
+        dismiss()
+    }
 
     private func createConstellation() {
         let finalName = displayName.trimmingCharacters(in: .whitespaces)
