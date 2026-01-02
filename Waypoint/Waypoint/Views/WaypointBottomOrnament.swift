@@ -11,96 +11,111 @@ import SwiftUI
 
 // MARK: - Bottom Ornament
 
-/// Bottom floating ornament for contextual controls
-/// Shows sort picker for List tab, layout picker for Orb tab
+/// Bottom floating ornament - skinny horizontal bar for constellation quick-switch
+/// Tap any constellation orb to filter to that group
 struct WaypointBottomOrnament: View {
 
     // MARK: - Properties
 
-    let selectedTab: WaypointApp.AppTab
     @Environment(NavigationState.self) private var navigationState
     @Environment(ConstellationManager.self) private var constellationManager
-    @ObservedObject var orbSceneState: OrbSceneState
 
     // MARK: - Body
 
     var body: some View {
-        Group {
-            switch selectedTab {
-            case .list:
-                listControls
-            case .orb:
-                orbControls
+        HStack(spacing: 8) {
+            // "All" option
+            ConstellationPill(
+                name: "All",
+                icon: "square.grid.2x2",
+                color: .secondary,
+                isSelected: navigationState.filterOption == .all,
+                action: {
+                    navigationState.filterOption = .all
+                    navigationState.selectedConstellationID = nil
+                }
+            )
+
+            // Constellation pills
+            ForEach(constellationManager.constellations) { constellation in
+                ConstellationPill(
+                    name: constellation.name,
+                    icon: constellation.icon,
+                    color: constellation.color,
+                    isSelected: isConstellation(constellation),
+                    action: {
+                        navigationState.selectConstellation(constellation)
+                    }
+                )
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .glassBackgroundEffect()
     }
 
-    // MARK: - List Controls
+    // MARK: - Helpers
 
-    private var listControls: some View {
-        @Bindable var navState = navigationState
-
-        return HStack(spacing: 12) {
-            // Sort picker
-            Image(systemName: "arrow.up.arrow.down")
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-
-            Picker("Sort", selection: $navState.sortOrder) {
-                ForEach(SortOrder.allCases, id: \.self) { order in
-                    Text(order.rawValue).tag(order)
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .tint(.primary)
+    private func isConstellation(_ constellation: Constellation) -> Bool {
+        if case .constellation(let id) = navigationState.filterOption {
+            return id == constellation.id
         }
+        return false
     }
+}
 
-    // MARK: - Orb Controls
+// MARK: - Constellation Pill
 
-    private var orbControls: some View {
-        HStack(spacing: 16) {
-            // Layout picker
-            HStack(spacing: 8) {
-                Image(systemName: "square.grid.3x3")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
+private struct ConstellationPill: View {
+    let name: String
+    let icon: String
+    let color: Color
+    let isSelected: Bool
+    let action: () -> Void
 
-                Picker("Layout", selection: $orbSceneState.layoutMode) {
-                    ForEach(OrbLayoutEngine.Layout.allCases, id: \.self) { layout in
-                        Text(layout.rawValue)
-                            .tag(layout)
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                // Small orb indicator
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(isSelected ? 0.4 : 0.2))
+                        .frame(width: 24, height: 24)
+
+                    if isSelected {
+                        Circle()
+                            .stroke(color, lineWidth: 1.5)
+                            .frame(width: 24, height: 24)
                     }
+
+                    Image(systemName: icon)
+                        .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                        .foregroundStyle(isSelected ? color : .secondary)
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .tint(.primary)
+
+                // Label (shows on hover or when selected)
+                if isHovering || isSelected {
+                    Text(name)
+                        .font(.caption)
+                        .fontWeight(isSelected ? .medium : .regular)
+                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .lineLimit(1)
+                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                }
             }
-
-            Divider()
-                .frame(height: 20)
-
-            // Constellation picker
-            HStack(spacing: 8) {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
-
-                Picker("Constellation", selection: $orbSceneState.selectedConstellationID) {
-                    Text("All Portals").tag(nil as UUID?)
-
-                    ForEach(constellationManager.constellations) { constellation in
-                        Label(constellation.name, systemImage: constellation.icon)
-                            .tag(constellation.id as UUID?)
-                    }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .tint(.primary)
+            .padding(.horizontal, isHovering || isSelected ? 8 : 4)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(isSelected ? color.opacity(0.15) : (isHovering ? Color.white.opacity(0.1) : Color.clear))
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovering = hovering
             }
         }
     }
@@ -110,15 +125,7 @@ struct WaypointBottomOrnament: View {
 
 #Preview {
     VStack(spacing: 40) {
-        WaypointBottomOrnament(
-            selectedTab: .list,
-            orbSceneState: OrbSceneState()
-        )
-
-        WaypointBottomOrnament(
-            selectedTab: .orb,
-            orbSceneState: OrbSceneState()
-        )
+        WaypointBottomOrnament()
     }
     .environment(NavigationState())
     .environment(ConstellationManager())

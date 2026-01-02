@@ -11,28 +11,31 @@ import SwiftUI
 
 // MARK: - Left Ornament
 
-/// Left-side floating ornament for tab switching, filters, and constellations
-/// Modeled after Apple Photos app ornament pattern
+/// Left-side floating ornament for filters and actions
+/// Slim vertical bar positioned further from window
 struct WaypointLeftOrnament: View {
 
     // MARK: - Properties
 
-    @Binding var selectedTab: WaypointApp.AppTab
     @Environment(NavigationState.self) private var navigationState
     @Environment(ConstellationManager.self) private var constellationManager
+    @Environment(PortalManager.self) private var portalManager
 
     @State private var isConstellationsExpanded = false
+    @State private var showQuickAdd = false
+    @State private var isHoveringPaste = false
+    @State private var isHoveringAdd = false
 
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
-            // Tab section
-            tabSection
+            // Quick actions section
+            quickActionsSection
 
             Divider()
-                .frame(width: 32)
-                .padding(.vertical, 8)
+                .frame(width: 28)
+                .padding(.vertical, 6)
 
             // Filter section
             filterSection
@@ -40,31 +43,36 @@ struct WaypointLeftOrnament: View {
             // Constellation section (expandable)
             if !constellationManager.constellations.isEmpty {
                 Divider()
-                    .frame(width: 32)
-                    .padding(.vertical, 8)
+                    .frame(width: 28)
+                    .padding(.vertical, 6)
 
                 constellationSection
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 10)
         .glassBackgroundEffect()
+        .sheet(isPresented: $showQuickAdd) {
+            QuickAddSheet()
+        }
     }
 
-    // MARK: - Tab Section
+    // MARK: - Quick Actions Section
 
-    private var tabSection: some View {
+    private var quickActionsSection: some View {
         VStack(spacing: 4) {
-            OrnamentIconButton(
-                icon: "list.bullet",
-                isSelected: selectedTab == .list,
-                action: { selectedTab = .list }
+            // Quick Paste
+            SlimOrnamentButton(
+                icon: "doc.on.clipboard",
+                isHovering: $isHoveringPaste,
+                action: quickPasteFromClipboard
             )
 
-            OrnamentIconButton(
-                icon: "sparkles",
-                isSelected: selectedTab == .orb,
-                action: { selectedTab = .orb }
+            // Quick Add URL
+            SlimOrnamentButton(
+                icon: "link.badge.plus",
+                isHovering: $isHoveringAdd,
+                action: { showQuickAdd = true }
             )
         }
     }
@@ -73,7 +81,7 @@ struct WaypointLeftOrnament: View {
 
     private var filterSection: some View {
         VStack(spacing: 4) {
-            OrnamentIconButton(
+            SlimOrnamentButton(
                 icon: "square.grid.2x2",
                 isSelected: navigationState.filterOption == .all,
                 action: {
@@ -82,7 +90,7 @@ struct WaypointLeftOrnament: View {
                 }
             )
 
-            OrnamentIconButton(
+            SlimOrnamentButton(
                 icon: "pin.fill",
                 isSelected: navigationState.filterOption == .pinned,
                 action: {
@@ -97,7 +105,7 @@ struct WaypointLeftOrnament: View {
     private var constellationSection: some View {
         VStack(spacing: 4) {
             // Expand/collapse toggle
-            OrnamentIconButton(
+            SlimOrnamentButton(
                 icon: isConstellationsExpanded ? "star.fill" : "star",
                 isSelected: isConstellationSelected,
                 action: {
@@ -118,7 +126,7 @@ struct WaypointLeftOrnament: View {
     private var constellationList: some View {
         VStack(spacing: 4) {
             ForEach(constellationManager.constellations) { constellation in
-                OrnamentIconButton(
+                SlimOrnamentButton(
                     icon: constellation.icon,
                     color: constellation.color,
                     isSelected: isConstellation(constellation),
@@ -145,61 +153,171 @@ struct WaypointLeftOrnament: View {
         }
         return false
     }
+
+    // MARK: - Quick Paste Action
+
+    private func quickPasteFromClipboard() {
+        guard let clipboardString = UIPasteboard.general.string else {
+            return
+        }
+
+        let trimmed = clipboardString.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Try to create URL
+        var url: URL?
+
+        // Direct URL check
+        if let directURL = URL(string: trimmed), directURL.scheme != nil {
+            if directURL.scheme == "http" || directURL.scheme == "https" || directURL.scheme == "file" {
+                url = directURL
+            }
+        }
+
+        // Check for domain-like strings (add https://)
+        if url == nil && trimmed.contains(".") && !trimmed.contains(" ") {
+            url = URL(string: "https://" + trimmed)
+        }
+
+        guard let validURL = url else {
+            return
+        }
+
+        // Check if portal already exists
+        if portalManager.portals.contains(where: { $0.url == validURL.absoluteString }) {
+            // Already exists - could show feedback
+            return
+        }
+
+        // Create new portal
+        let portal = DropService.createPortal(from: validURL)
+        portalManager.add(portal)
+        print("📋 Quick Paste created: \(portal.name)")
+    }
 }
 
-// MARK: - Ornament Icon Button
+// MARK: - Slim Ornament Button
 
-private struct OrnamentIconButton: View {
+private struct SlimOrnamentButton: View {
     let icon: String
     var color: Color = .primary
-    let isSelected: Bool
+    var isSelected: Bool = false
+    @Binding var isHovering: Bool
     let action: () -> Void
 
-    @State private var isHovering = false
+    init(icon: String, color: Color = .primary, isSelected: Bool = false, isHovering: Binding<Bool> = .constant(false), action: @escaping () -> Void) {
+        self.icon = icon
+        self.color = color
+        self.isSelected = isSelected
+        self._isHovering = isHovering
+        self.action = action
+    }
+
+    @State private var localHovering = false
+
+    private var hovering: Bool {
+        isHovering || localHovering
+    }
 
     var body: some View {
         Button(action: action) {
             ZStack {
                 // Background
                 Circle()
-                    .fill(isSelected ? color.opacity(0.25) : Color.clear)
-                    .frame(width: 44, height: 44)
+                    .fill(isSelected ? color.opacity(0.3) : (hovering ? Color.white.opacity(0.15) : Color.clear))
+                    .frame(width: 36, height: 36)
 
                 // Selection ring
                 if isSelected {
                     Circle()
-                        .stroke(color.opacity(0.6), lineWidth: 2)
-                        .frame(width: 44, height: 44)
-                }
-
-                // Hover highlight
-                if isHovering && !isSelected {
-                    Circle()
-                        .fill(Color.white.opacity(0.1))
-                        .frame(width: 44, height: 44)
+                        .stroke(color.opacity(0.6), lineWidth: 1.5)
+                        .frame(width: 36, height: 36)
                 }
 
                 // Icon
                 Image(systemName: icon)
-                    .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(isSelected ? color : .secondary)
+                    .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? color : (hovering ? .primary : .secondary))
             }
         }
         .buttonStyle(.plain)
-        .onHover { hovering in
+        .onHover { hover in
             withAnimation(.easeInOut(duration: 0.15)) {
-                isHovering = hovering
+                localHovering = hover
             }
         }
+    }
+}
+
+// MARK: - Quick Add Sheet
+
+private struct QuickAddSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(PortalManager.self) private var portalManager
+    @State private var urlText = ""
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                TextField("Enter URL or site name", text: $urlText)
+                    .textFieldStyle(.roundedBorder)
+                    .textContentType(.URL)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .focused($isFocused)
+                    .onSubmit { createPortal() }
+                    .padding(.horizontal)
+
+                Text("Examples: google.com, https://example.com")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+            }
+            .padding(.top, 20)
+            .navigationTitle("Quick Add")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") { createPortal() }
+                        .disabled(urlText.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+        }
+        .onAppear { isFocused = true }
+        .frame(minWidth: 300, minHeight: 200)
+    }
+
+    private func createPortal() {
+        let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        var urlString = trimmed
+        if !urlString.contains("://") {
+            urlString = "https://\(urlString)"
+        }
+        if !urlString.contains(".") {
+            urlString = urlString.replacingOccurrences(of: "https://", with: "https://www.") + ".com"
+        }
+
+        guard let url = URL(string: urlString) else { return }
+
+        let portal = DropService.createPortal(from: url)
+        portalManager.add(portal)
+        dismiss()
     }
 }
 
 // MARK: - Preview
 
 #Preview {
-    WaypointLeftOrnament(selectedTab: .constant(.list))
+    WaypointLeftOrnament()
         .environment(NavigationState())
         .environment(ConstellationManager())
+        .environment(PortalManager())
         .padding()
 }
 

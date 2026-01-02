@@ -84,20 +84,20 @@ struct WaypointApp: App {
                 }
             }
 #if os(visionOS)
-            // Left ornament: Tab switching + filters + constellations
+            // Left ornament: Quick actions + filters + constellations
             .ornament(visibility: .visible, attachmentAnchor: .scene(.leading), contentAlignment: .trailing) {
-                WaypointLeftOrnament(selectedTab: $selectedTab)
+                WaypointLeftOrnament()
+                    .environment(portalManager)
                     .environment(navigationState)
                     .environment(constellationManager)
+                    .padding(.trailing, 20) // Push further from window
             }
-            // Bottom ornament: Contextual controls (sort for List, layout for Orb)
+            // Bottom ornament: Constellation quick-switch bar
             .ornament(visibility: .visible, attachmentAnchor: .scene(.bottom), contentAlignment: .top) {
-                WaypointBottomOrnament(
-                    selectedTab: selectedTab,
-                    orbSceneState: orbSceneState
-                )
-                .environment(navigationState)
-                .environment(constellationManager)
+                WaypointBottomOrnament()
+                    .environment(navigationState)
+                    .environment(constellationManager)
+                    .padding(.top, 16) // Push further from window
             }
 #endif
         }
