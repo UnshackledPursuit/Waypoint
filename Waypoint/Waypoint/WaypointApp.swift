@@ -84,26 +84,20 @@ struct WaypointApp: App {
                 }
             }
 #if os(visionOS)
-            // Left ornament: Navigation (constellations + filters)
-            .ornament(visibility: .visible, attachmentAnchor: .scene(.leading), contentAlignment: .leading) {
-                NavigationOrnament()
+            // Left ornament: Tab switching + filters + constellations
+            .ornament(visibility: .visible, attachmentAnchor: .scene(.leading), contentAlignment: .trailing) {
+                WaypointLeftOrnament(selectedTab: $selectedTab)
                     .environment(navigationState)
                     .environment(constellationManager)
-                    .padding(.leading, 12)
             }
-            // Bottom ornament: Orb-specific controls (layout mode)
-            .ornament(visibility: .visible, attachmentAnchor: .scene(.bottom), contentAlignment: .bottom) {
-                if selectedTab == .orb {
-                    OrbAppOrnamentVariant {
-                        OrbOrnamentControls(
-                            selectedConstellationID: $orbSceneState.selectedConstellationID,
-                            layoutMode: $orbSceneState.layoutMode,
-                            constellations: constellationManager.constellations,
-                            layout: .horizontal,
-                            labelStyle: .hoverReveal
-                        )
-                    }
-                }
+            // Bottom ornament: Contextual controls (sort for List, layout for Orb)
+            .ornament(visibility: .visible, attachmentAnchor: .scene(.bottom), contentAlignment: .top) {
+                WaypointBottomOrnament(
+                    selectedTab: selectedTab,
+                    orbSceneState: orbSceneState
+                )
+                .environment(navigationState)
+                .environment(constellationManager)
             }
 #endif
         }
@@ -262,17 +256,3 @@ struct WaypointApp: App {
     }
 }
 
-// MARK: - Ornament Helpers
-
-#if os(visionOS)
-private struct OrbAppOrnamentVariant<Content: View>: View {
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            content()
-        }
-        .padding(.bottom, 10)
-    }
-}
-#endif
