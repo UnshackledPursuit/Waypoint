@@ -15,6 +15,7 @@ struct PortalListView: View {
 
     @Environment(PortalManager.self) private var portalManager
     @Environment(ConstellationManager.self) private var constellationManager
+    @Environment(NavigationState.self) private var navigationState
     @State private var showAddPortal = false
     @State private var portalToEdit: Portal?
     @State private var showQuickStart = false
@@ -39,9 +40,7 @@ struct PortalListView: View {
     @State private var showConstellationAssigned = false
     @State private var assignedConstellationName = ""
 
-    // Sorting and filtering
-    @State private var sortOrder: SortOrder = .dateAdded
-    @State private var filterOption: FilterOption = .all
+    // Sorting uses shared NavigationState (navigationState.filterOption and sortOrder)
 
     // Open failure feedback
     @State private var showOpenFailed = false
@@ -58,27 +57,8 @@ struct PortalListView: View {
     // Edit mode for drag/drop reordering
     @State private var editMode: EditMode = .inactive
     
-    enum SortOrder: String, CaseIterable {
-        case custom = "Custom"
-        case dateAdded = "Date Added"
-        case recent = "Recently Used"
-        case name = "Name"
-    }
-    
-    enum FilterOption: Hashable {
-        case all
-        case pinned
-        case constellation(UUID)
+    // SortOrder and FilterOption are now in NavigationState.swift
 
-        var displayName: String {
-            switch self {
-            case .all: return "All"
-            case .pinned: return "Pinned"
-            case .constellation: return "Constellation"
-            }
-        }
-    }
-    
     // MARK: - Body
 
     var body: some View {
@@ -121,15 +101,15 @@ struct PortalListView: View {
                         // Filter section
                         Section("Filter") {
                             Button {
-                                filterOption = .all
+                                navigationState.filterOption = .all
                             } label: {
-                                Label("All", systemImage: filterOption == .all ? "checkmark" : "circle")
+                                Label("All", systemImage: navigationState.filterOption == .all ? "checkmark" : "circle")
                             }
 
                             Button {
-                                filterOption = .pinned
+                                navigationState.filterOption = .pinned
                             } label: {
-                                Label("Pinned", systemImage: filterOption == .pinned ? "checkmark" : "pin")
+                                Label("Pinned", systemImage: navigationState.filterOption == .pinned ? "checkmark" : "pin")
                             }
                         }
 
@@ -139,12 +119,12 @@ struct PortalListView: View {
                                 // Direct tap-to-filter for each constellation
                                 ForEach(constellationManager.constellations) { constellation in
                                     Button {
-                                        filterOption = .constellation(constellation.id)
+                                        navigationState.filterOption = .constellation(constellation.id)
                                     } label: {
                                         Label {
                                             Text(constellation.name)
                                         } icon: {
-                                            Image(systemName: filterOption == .constellation(constellation.id) ? "checkmark" : constellation.icon)
+                                            Image(systemName: navigationState.filterOption == .constellation(constellation.id) ? "checkmark" : constellation.icon)
                                         }
                                     }
                                 }
@@ -183,7 +163,7 @@ struct PortalListView: View {
 
                         // Sort section
                         Section("Sort By") {
-                            Picker("Sort By", selection: $sortOrder) {
+                            Picker("Sort By", selection: Bindable(navigationState).sortOrder) {
                                 ForEach(SortOrder.allCases, id: \.self) { order in
                                     Text(order.rawValue).tag(order)
                                 }
@@ -506,7 +486,7 @@ struct PortalListView: View {
         // Check if portal already exists
         if let existingPortal = existingPortal(for: validURL) {
             // If filtering by constellation, add existing portal to that constellation
-            if case .constellation(let constellationID) = filterOption,
+            if case .constellation(let constellationID) = navigationState.filterOption,
                let constellation = constellationManager.constellation(withID: constellationID) {
                 if !constellation.portalIDs.contains(existingPortal.id) {
                     constellationManager.addPortal(existingPortal.id, to: constellation)
@@ -748,7 +728,7 @@ struct PortalListView: View {
     private var filteredAndSortedPortals: [Portal] {
         // First filter
         var filtered: [Portal]
-        switch filterOption {
+        switch navigationState.filterOption {
         case .all:
             filtered = portalManager.portals
         case .pinned:
@@ -769,7 +749,7 @@ struct PortalListView: View {
             }
 
             // Then apply selected sort
-            switch sortOrder {
+            switch navigationState.sortOrder {
             case .custom:
                 // Sort by sortIndex (manual order)
                 return portal1.sortIndex < portal2.sortIndex
@@ -951,7 +931,7 @@ struct PortalListView: View {
     private func createPortalIfNeeded(from url: URL) -> Portal? {
         if let existingPortal = existingPortal(for: url) {
             // If filtering by constellation, add existing portal to that constellation
-            if case .constellation(let constellationID) = filterOption,
+            if case .constellation(let constellationID) = navigationState.filterOption,
                let constellation = constellationManager.constellation(withID: constellationID) {
                 if !constellation.portalIDs.contains(existingPortal.id) {
                     constellationManager.addPortal(existingPortal.id, to: constellation)
@@ -968,7 +948,7 @@ struct PortalListView: View {
         portalManager.add(portal)
 
         // If filtering by constellation, add new portal to that constellation
-        if case .constellation(let constellationID) = filterOption,
+        if case .constellation(let constellationID) = navigationState.filterOption,
            let constellation = constellationManager.constellation(withID: constellationID) {
             constellationManager.addPortal(portal.id, to: constellation)
             print("✨ Added new portal to constellation: \(constellation.name)")

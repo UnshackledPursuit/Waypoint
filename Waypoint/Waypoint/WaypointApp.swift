@@ -21,6 +21,7 @@ struct WaypointApp: App {
 
     @State private var portalManager = PortalManager()
     @State private var constellationManager = ConstellationManager()
+    @State private var navigationState = NavigationState()
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var orbSceneState = OrbSceneState()
     @State private var selectedTab: AppTab = .list
@@ -52,6 +53,7 @@ struct WaypointApp: App {
             }
             .environment(portalManager)
             .environment(constellationManager)
+            .environment(navigationState)
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 if newPhase == .active && clipboardDetectionEnabled {
                     checkClipboardForURL()
@@ -82,6 +84,12 @@ struct WaypointApp: App {
                 }
             }
 #if os(visionOS)
+            // Left ornament: Navigation (constellations + filters)
+            .ornament(visibility: .visible, attachmentAnchor: .scene(.leading), contentAlignment: .leading) {
+                NavigationOrnament()
+                    .padding(.leading, 12)
+            }
+            // Bottom ornament: Orb-specific controls (layout mode)
             .ornament(visibility: .visible, attachmentAnchor: .scene(.bottom), contentAlignment: .bottom) {
                 if selectedTab == .orb {
                     OrbAppOrnamentVariant {
