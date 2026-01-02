@@ -692,22 +692,24 @@ struct PortalListView: View {
                     .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
                     .id(portal.id)
                 }
-                .onMove { source, destination in
-                    // Allow move in custom sort mode for any filter
-                    if sortOrder == .custom {
-                        portalManager.movePortals(from: source, to: destination, in: filteredAndSortedPortals)
-                    }
-                }
+                // TEMPORARILY DISABLED: onMove conflicts with long-press gesture
+                // .onMove { source, destination in
+                //     // Allow move in custom sort mode for any filter
+                //     if sortOrder == .custom {
+                //         portalManager.movePortals(from: source, to: destination, in: filteredAndSortedPortals)
+                //     }
+                // }
             }
-            .environment(\.editMode, $editMode)
-            .onChange(of: sortOrder) { _, newValue in
-                withAnimation {
-                    editMode = newValue == .custom ? .active : .inactive
-                }
-            }
-            .onAppear {
-                editMode = sortOrder == .custom ? .active : .inactive
-            }
+            // TEMPORARILY DISABLED: Edit mode conflicts with long-press gesture
+            // .environment(\.editMode, $editMode)
+            // .onChange(of: sortOrder) { _, newValue in
+            //     withAnimation {
+            //         editMode = newValue == .custom ? .active : .inactive
+            //     }
+            // }
+            // .onAppear {
+            //     editMode = sortOrder == .custom ? .active : .inactive
+            // }
             .onChange(of: focusRequestPortalID) { _, portalID in
                 guard let portalID else { return }
                 withAnimation(.easeInOut(duration: 0.25)) {
