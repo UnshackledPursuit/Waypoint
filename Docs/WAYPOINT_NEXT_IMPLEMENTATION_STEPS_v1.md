@@ -110,24 +110,30 @@
 
 ---
 
-## Step 3.7 — FaviconService (Required before Wormhole) 🔴 TODO
+## Step 3.7 — FaviconService (Required before Wormhole) ✅ Completed
 
 **Goal:** Fetch and cache favicons for web portals so orbs display actual icons instead of letter avatars.
 
-**Implementation:**
-1. Create `FaviconService.swift`:
-   - Async favicon fetch from Google Favicon API or direct site fetch
-   - In-memory + disk cache
-   - Dominant color extraction for orb glow
-2. Update `PortalManager` to trigger favicon fetch on portal creation
-3. Update portal `thumbnailData` field with fetched favicon
+**Implementation completed:**
+1. Created `FaviconService.swift`:
+   - Actor-based singleton for thread-safe operations
+   - Memory cache (NSCache, 100 items, 50MB limit) + disk cache
+   - Multiple favicon sources: Google, DuckDuckGo, direct favicon.ico, apple-touch-icon
+   - Image resizing to 64x64 for consistency
+   - Dominant color extraction for orb glow effects
+2. Integrated with `PortalManager`:
+   - `add()` triggers async favicon fetch (non-blocking)
+   - `addMultiple()` triggers batch favicon fetch
+   - `fetchFavicon(for:)` method updates portal thumbnailData
+   - `refreshAllFavicons()` for bulk refresh of existing portals
 
 **Portal model already has:**
-- `thumbnailData: Data?` - for auto-fetched favicon
-- `customThumbnail: Data?` - for user override
-- `displayThumbnail` computed property
+- `thumbnailData: Data?` - for auto-fetched favicon ✅
+- `customThumbnail: Data?` - for user override ✅
+- `displayThumbnail` computed property ✅
 
-**Output:** Portals display website favicons in List view and Orb view.
+**Output:** Portals automatically display website favicons in List view and Orb view.
+**Status:** Completed (commit d916f73 on feature/favicon-service branch)
 
 ---
 
