@@ -26,27 +26,26 @@ struct OrbContainerView: View {
                 OrbExpandedView(
                     title: expandedTitle,
                     portals: visiblePortals,
-                    layoutMode: $sceneState.layoutMode,
                     constellationColor: selectedConstellationColor,
-                    onBack: collapse
-                ) { portal in
-                    openPortal(portal)
-                }
+                    onBack: collapse,
+                    onOpen: { portal in
+                        openPortal(portal)
+                    }
+                )
             } else {
-                OrbTopBar(title: "Orb", onBack: nil, trailing: nil)
-
-                OrbFieldView(
+                OrbLinearField(
                     portals: visiblePortals,
-                    layoutMode: sceneState.layoutMode,
-                    constellationColor: selectedConstellationColor
-                ) { portal in
-                    openPortal(portal)
-                }
+                    constellationColor: selectedConstellationColor,
+                    onOpen: { portal in
+                        openPortal(portal)
+                    }
+                )
             }
         }
-        .padding(.vertical, 16)
-        .padding(.horizontal, 20)
-        .navigationTitle("Orb")
+        .padding(24) // Consistent padding on all sides
+        #if os(visionOS)
+        .toolbar(.hidden, for: .navigationBar)
+        #endif
         .overlay {
             DropInteractionView(
                 allowedTypeIdentifiers: [

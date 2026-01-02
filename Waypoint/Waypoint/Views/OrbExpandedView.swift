@@ -13,7 +13,6 @@ struct OrbExpandedView: View {
 
     let title: String
     let portals: [Portal]
-    @Binding var layoutMode: OrbLayoutEngine.Layout
     var constellationColor: Color? = nil
     let onBack: () -> Void
     let onOpen: (Portal) -> Void
@@ -24,9 +23,8 @@ struct OrbExpandedView: View {
         VStack(spacing: 12) {
             OrbTopBar(title: title, onBack: onBack, trailing: nil)
 
-            OrbFieldView(
+            OrbLinearField(
                 portals: portals,
-                layoutMode: layoutMode,
                 constellationColor: constellationColor,
                 onOpen: onOpen
             )
@@ -40,7 +38,6 @@ struct OrbExpandedView: View {
     OrbExpandedView(
         title: "Focus",
         portals: Portal.samples,
-        layoutMode: .constant(.auto),
         onBack: {},
         onOpen: { _ in }
     )
