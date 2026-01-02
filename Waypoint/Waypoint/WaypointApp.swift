@@ -84,21 +84,15 @@ struct WaypointApp: App {
                 }
             }
 #if os(visionOS)
-            // Left ornament: Quick actions + filters
-            .ornament(visibility: .visible, attachmentAnchor: .scene(.leading), contentAlignment: .trailing) {
-                WaypointLeftOrnament()
-                    .environment(portalManager)
-                    .environment(navigationState)
-                    .environment(constellationManager)
-                    .padding(.trailing, 20) // Push further from window
-            }
-            // Bottom ornament: Constellation quick-switch bar
+            // Bottom ornament: Unified control bar
+            // Quick actions + filters + constellations + launch
+            // Native TabView ornament handles tab switching (has nice hover behavior)
             .ornament(visibility: .visible, attachmentAnchor: .scene(.bottom), contentAlignment: .top) {
                 WaypointBottomOrnament()
                     .environment(portalManager)
                     .environment(navigationState)
                     .environment(constellationManager)
-                    .padding(.top, 16) // Push further from window
+                    .padding(.top, 12)
             }
 #endif
         }

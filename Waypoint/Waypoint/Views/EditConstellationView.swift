@@ -21,6 +21,7 @@ struct EditConstellationView: View {
     @State private var selectedIcon: String
     @State private var selectedColorHex: String
     @State private var showDeleteConfirmation = false
+    @State private var showCreateConstellation = false
 
     private var selectedConstellation: Constellation? {
         constellationManager.constellation(withID: selectedConstellationID)
@@ -190,11 +191,45 @@ struct EditConstellationView: View {
                                 return true
                             }
                     }
+
+                    // Add new constellation button
+                    addConstellationButton
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 4)
             }
+            .sheet(isPresented: $showCreateConstellation) {
+                CreateConstellationView(initialPortal: nil)
+            }
         }
+    }
+
+    private var addConstellationButton: some View {
+        Button {
+            showCreateConstellation = true
+        } label: {
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(Color.secondary.opacity(0.15))
+                        .frame(width: 44, height: 44)
+
+                    Circle()
+                        .stroke(Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "plus")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: 52, height: 52)
+
+                Text("New")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private func constellationPickerItem(_ constellation: Constellation) -> some View {
