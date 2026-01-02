@@ -204,7 +204,44 @@
 
 ---
 
-## Step 3.10 — Fix Custom Sort (Drag Handles) 🟡 OPTIONAL
+## Step 3.10 — Navigation Ornament ✅ Completed
+
+**Goal:** Add left-side ornament for constellation/filter navigation across both List and Orb views.
+
+**Implementation completed:**
+
+1. **NavigationState.swift:**
+   - Shared @Observable state for filterOption and sortOrder
+   - Works across both List and Orb tabs
+   - FilterOption enum: all, pinned, constellation(UUID)
+   - SortOrder enum: custom, dateAdded, recent, name
+
+2. **NavigationOrnament.swift:**
+   - Left-side visionOS ornament
+   - Filter buttons (All, Pinned)
+   - Expandable constellation section
+   - Glass material styling with hover effects
+
+3. **WaypointApp updates:**
+   - Added NavigationState to environment
+   - Added left ornament (`.scene(.leading)`)
+   - Bottom ornament retained for Orb-specific controls
+
+4. **PortalListView updates:**
+   - Uses shared NavigationState instead of local state
+   - Removed duplicate FilterOption/SortOrder enums
+
+5. **Branch management:**
+   - Created BRANCH_STATUS.md with policies
+   - Deleted 6 stale branches
+   - Only main branch remains
+
+**Output:** Unified navigation across List and Orb views via left ornament.
+**Status:** Completed (commit 6d60873)
+
+---
+
+## Step 3.11 — Fix Custom Sort (Drag Handles) 🟡 OPTIONAL
 
 **Goal:** Re-enable drag-to-reorder portals without breaking long-press micro-actions.
 
