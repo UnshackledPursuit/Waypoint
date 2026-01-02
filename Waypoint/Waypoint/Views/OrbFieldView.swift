@@ -13,6 +13,8 @@ struct OrbFieldView: View {
 
     let portals: [Portal]
     let layoutMode: OrbLayoutEngine.Layout
+    /// The active constellation's color (used when colorMode is .constellation)
+    var constellationColor: Color? = nil
     let onOpen: (Portal) -> Void
 
     // MARK: - Body
@@ -49,9 +51,11 @@ struct OrbFieldView: View {
 
         ZStack {
             ForEach(Array(portals.enumerated()), id: \.element.id) { index, portal in
-                PortalOrbView(portal: portal) {
-                    onOpen(portal)
-                }
+                PortalOrbView(
+                    portal: portal,
+                    constellationColor: constellationColor,
+                    onOpen: { onOpen(portal) }
+                )
                 .position(positions[safe: index] ?? .zero)
             }
         }
@@ -70,9 +74,11 @@ struct OrbFieldView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: spacing) {
                     ForEach(portals) { portal in
-                        PortalOrbView(portal: portal) {
-                            onOpen(portal)
-                        }
+                        PortalOrbView(
+                            portal: portal,
+                            constellationColor: constellationColor,
+                            onOpen: { onOpen(portal) }
+                        )
                         .frame(width: orbSize, height: orbSize)
                     }
                 }
@@ -84,9 +90,11 @@ struct OrbFieldView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: spacing) {
                     ForEach(portals) { portal in
-                        PortalOrbView(portal: portal) {
-                            onOpen(portal)
-                        }
+                        PortalOrbView(
+                            portal: portal,
+                            constellationColor: constellationColor,
+                            onOpen: { onOpen(portal) }
+                        )
                         .frame(width: orbSize, height: orbSize)
                     }
                 }

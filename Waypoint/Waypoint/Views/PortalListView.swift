@@ -1138,8 +1138,58 @@ struct PortalRow: View {
     let portal: Portal
     @Environment(ConstellationManager.self) private var constellationManager
 
+    /// Global orb intensity from user preferences
+    @AppStorage("orbIntensity") private var orbIntensity: Double = 0.7
+
+    /// Global orb color mode
+    @AppStorage("orbColorMode") private var orbColorModeRaw: String = OrbColorMode.defaultStyle.rawValue
+
+    private var orbColorMode: OrbColorMode {
+        OrbColorMode(rawValue: orbColorModeRaw) ?? .defaultStyle
+    }
+
+    /// Opacity multiplier based on intensity
+    private var colorOpacity: Double {
+        if orbColorMode == .frost || orbColorMode == .mono {
+            return 0.4 // Frosted/mono look
+        }
+        return 0.3 + (orbIntensity * 0.7)
+    }
+
     private var portalConstellations: [Constellation] {
         constellationManager.constellationsContaining(portalID: portal.id)
+    }
+
+    /// Whether to use gradient for multi-constellation portals (list view only)
+    private var useGradient: Bool {
+        orbColorMode == .constellation && portalConstellations.count > 1
+    }
+
+    /// Whether to desaturate favicons (mono mode)
+    private var shouldDesaturateContent: Bool {
+        orbColorMode == .mono
+    }
+
+    /// Get the effective orb color based on color mode
+    private func effectiveColor(_ baseColor: Color) -> Color {
+        switch orbColorMode {
+        case .constellation:
+            // For list view with multi-constellation, we'll use gradient (handled separately)
+            // For single constellation, use that color
+            return portalConstellations.first?.color ?? baseColor
+        case .defaultStyle:
+            return baseColor
+        case .frost, .mono:
+            return Color.gray
+        }
+    }
+
+    /// Get gradient colors for multi-constellation portals
+    private var gradientColors: [Color] {
+        if portalConstellations.count > 1 {
+            return portalConstellations.prefix(3).map { $0.color }
+        }
+        return []
     }
 
     var body: some View {
@@ -1168,12 +1218,12 @@ struct PortalRow: View {
 
             Spacer()
 
-            // Constellation icons
+            // Constellation icons (grayscale in mono mode)
             if !portalConstellations.isEmpty {
                 HStack(spacing: 4) {
                     ForEach(portalConstellations.prefix(3)) { constellation in
                         Image(systemName: constellation.icon)
-                            .foregroundStyle(Color(hex: constellation.colorHex))
+                            .foregroundColor(shouldDesaturateContent ? Color.secondary : Color(hex: constellation.colorHex))
                             .font(.caption)
                     }
                     if portalConstellations.count > 3 {
@@ -1184,10 +1234,10 @@ struct PortalRow: View {
                 }
             }
 
-            // Pin indicator
+            // Pin indicator (grayscale in mono mode)
             if portal.isPinned {
                 Image(systemName: "pin.fill")
-                    .foregroundStyle(.blue)
+                    .foregroundColor(shouldDesaturateContent ? Color.secondary : Color.blue)
                     .font(.caption)
             }
         }
@@ -1198,8 +1248,8 @@ struct PortalRow: View {
 
     @ViewBuilder
     private var thumbnailView: some View {
-        // Determine the glow color based on custom style settings
-        let color: Color = {
+        // Determine the base glow color based on custom style settings
+        let baseColor: Color = {
             if portal.useCustomStyle {
                 return portal.displayColor
             } else if portal.displayThumbnail != nil {
@@ -1211,22 +1261,39 @@ struct PortalRow: View {
             }
         }()
 
+        // Apply color mode (constellation/default/frost)
+        let color = effectiveColor(baseColor)
+
         ZStack {
-            // Outer glow
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            color.opacity(0.4),
-                            color.opacity(0.15),
-                            Color.clear
-                        ],
-                        center: .center,
-                        startRadius: 12,
-                        endRadius: 28
+            // Outer glow (intensity-affected, gradient for multi-constellation)
+            if useGradient && gradientColors.count > 1 {
+                // Multi-constellation gradient glow
+                Circle()
+                    .fill(
+                        AngularGradient(
+                            colors: gradientColors.map { $0.opacity(0.4 * colorOpacity) } + [gradientColors[0].opacity(0.4 * colorOpacity)],
+                            center: .center
+                        )
                     )
-                )
-                .frame(width: 50, height: 50)
+                    .frame(width: 50, height: 50)
+                    .blur(radius: 8)
+            } else {
+                // Single color glow
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                color.opacity(0.4 * colorOpacity),
+                                color.opacity(0.15 * colorOpacity),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 12,
+                            endRadius: 28
+                        )
+                    )
+                    .frame(width: 50, height: 50)
+            }
 
             // Main orb content
             ZStack {
@@ -1242,15 +1309,16 @@ struct PortalRow: View {
                         .scaledToFit()
                         .clipShape(Circle())
                         .padding(5)
+                        .saturation(shouldDesaturateContent ? 0 : 1)
                 } else if portal.useCustomStyle {
-                    // Custom style - colored orb with icon/initials
+                    // Custom style - colored orb with icon/initials (intensity-affected)
                     Circle()
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    portal.displayColor.opacity(0.5),
-                                    portal.displayColor.opacity(0.7),
-                                    portal.displayColor.opacity(0.85)
+                                    color.opacity(0.5 * colorOpacity),
+                                    color.opacity(0.7 * colorOpacity),
+                                    color.opacity(0.85 * colorOpacity)
                                 ],
                                 center: UnitPoint(x: 0.3, y: 0.25),
                                 startRadius: 0,
@@ -1281,15 +1349,16 @@ struct PortalRow: View {
                         .scaledToFit()
                         .clipShape(Circle())
                         .padding(5)
+                        .saturation(shouldDesaturateContent ? 0 : 1)
                 } else if portal.type != .web {
-                    // Non-web portals - colored orb with type icon
+                    // Non-web portals - colored orb with type icon (intensity-affected)
                     Circle()
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    portal.displayColor.opacity(0.5),
-                                    portal.displayColor.opacity(0.7),
-                                    portal.displayColor.opacity(0.85)
+                                    color.opacity(0.5 * colorOpacity),
+                                    color.opacity(0.7 * colorOpacity),
+                                    color.opacity(0.85 * colorOpacity)
                                 ],
                                 center: UnitPoint(x: 0.3, y: 0.25),
                                 startRadius: 0,
@@ -1302,14 +1371,14 @@ struct PortalRow: View {
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.3), radius: 1, y: 1)
                 } else {
-                    // Web portals without favicon - colored orb with initial
+                    // Web portals without favicon - colored orb with initial (intensity-affected)
                     Circle()
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    portal.fallbackColor.opacity(0.5),
-                                    portal.fallbackColor.opacity(0.7),
-                                    portal.fallbackColor.opacity(0.85)
+                                    color.opacity(0.5 * colorOpacity),
+                                    color.opacity(0.7 * colorOpacity),
+                                    color.opacity(0.85 * colorOpacity)
                                 ],
                                 center: UnitPoint(x: 0.3, y: 0.25),
                                 startRadius: 0,
@@ -1355,7 +1424,7 @@ struct PortalRow: View {
                     )
             }
             .frame(width: 40, height: 40)
-            .shadow(color: color.opacity(0.4), radius: 6, y: 3)
+            .shadow(color: color.opacity(0.4 * colorOpacity), radius: 6, y: 3)
 
             // Source badge for non-web portals
             if portal.type.showSourceBadge {

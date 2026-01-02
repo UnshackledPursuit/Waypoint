@@ -23,6 +23,13 @@ struct WaypointBottomOrnament: View {
 
     @State private var constellationToEdit: Constellation?
 
+    /// Global orb color mode
+    @AppStorage("orbColorMode") private var orbColorModeRaw: String = OrbColorMode.defaultStyle.rawValue
+
+    private var isMonoMode: Bool {
+        OrbColorMode(rawValue: orbColorModeRaw) == .mono
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -39,6 +46,7 @@ struct WaypointBottomOrnament: View {
                         ConstellationPill(
                             constellation: constellation,
                             isSelected: isConstellation(constellation),
+                            isMonoMode: isMonoMode,
                             onTap: {
                                 navigationState.selectConstellation(constellation)
                             },
@@ -94,14 +102,15 @@ struct WaypointBottomOrnament: View {
     // MARK: - Launch All Pill
 
     private var launchAllPill: some View {
-        Button {
+        let pillColor = isMonoMode ? Color.secondary : (selectedConstellation?.color ?? .blue)
+        return Button {
             if let constellation = selectedConstellation {
                 launchConstellation(constellation)
             }
         } label: {
             ZStack {
                 Circle()
-                    .fill(selectedConstellation?.color.opacity(0.8) ?? Color.blue.opacity(0.8))
+                    .fill(pillColor.opacity(0.8))
                     .frame(width: 36, height: 36)
 
                 Image(systemName: "arrow.up.right.square")
@@ -200,11 +209,17 @@ private struct CompactPillButton: View {
 private struct ConstellationPill: View {
     let constellation: Constellation
     let isSelected: Bool
+    var isMonoMode: Bool = false
     let onTap: () -> Void
     let onEdit: () -> Void
     let onLaunch: () -> Void
 
     @State private var isHovering = false
+
+    /// Effective color - grayscale in mono mode
+    private var effectiveColor: Color {
+        isMonoMode ? .secondary : constellation.color
+    }
 
     var body: some View {
         Button(action: onTap) {
@@ -212,18 +227,18 @@ private struct ConstellationPill: View {
                 // Small orb
                 ZStack {
                     Circle()
-                        .fill(constellation.color.opacity(isSelected ? 0.5 : 0.3))
+                        .fill(effectiveColor.opacity(isSelected ? 0.5 : 0.3))
                         .frame(width: 28, height: 28)
 
                     if isSelected {
                         Circle()
-                            .stroke(constellation.color, lineWidth: 2)
+                            .stroke(effectiveColor, lineWidth: 2)
                             .frame(width: 28, height: 28)
                     }
 
                     Image(systemName: constellation.icon)
                         .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-                        .foregroundStyle(isSelected ? constellation.color : .secondary)
+                        .foregroundStyle(isSelected ? effectiveColor : .secondary)
                 }
 
                 // Label on hover or selected
@@ -240,7 +255,7 @@ private struct ConstellationPill: View {
             .padding(.vertical, 4)
             .background(
                 Capsule()
-                    .fill(isSelected ? constellation.color.opacity(0.2) : (isHovering ? Color.white.opacity(0.08) : Color.clear))
+                    .fill(isSelected ? effectiveColor.opacity(0.2) : (isHovering ? Color.white.opacity(0.08) : Color.clear))
             )
         }
         .buttonStyle(.plain)

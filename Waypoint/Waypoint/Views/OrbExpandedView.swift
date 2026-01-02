@@ -14,6 +14,7 @@ struct OrbExpandedView: View {
     let title: String
     let portals: [Portal]
     @Binding var layoutMode: OrbLayoutEngine.Layout
+    var constellationColor: Color? = nil
     let onBack: () -> Void
     let onOpen: (Portal) -> Void
 
@@ -26,6 +27,7 @@ struct OrbExpandedView: View {
             OrbFieldView(
                 portals: portals,
                 layoutMode: layoutMode,
+                constellationColor: constellationColor,
                 onOpen: onOpen
             )
         }

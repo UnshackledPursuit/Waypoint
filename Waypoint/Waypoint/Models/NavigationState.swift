@@ -51,6 +51,38 @@ enum SortOrder: String, CaseIterable {
     }
 }
 
+// MARK: - Orb Color Mode
+
+/// Controls how orb colors are determined
+enum OrbColorMode: String, CaseIterable {
+    /// Use the active constellation's color for all orbs
+    case constellation = "constellation"
+    /// Each portal uses its default/assigned color (current behavior)
+    case defaultStyle = "default"
+    /// Frosted glass bubbles, but icons/favicons keep color
+    case frost = "frost"
+    /// Complete grayscale - everything loses color (favicons, icons, all)
+    case mono = "mono"
+
+    var icon: String {
+        switch self {
+        case .constellation: return "sparkles"
+        case .defaultStyle: return "paintpalette"
+        case .frost: return "snowflake"
+        case .mono: return "circle.slash" // Clearer than circle.lefthalf.strikethrough
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .constellation: return "Group"
+        case .defaultStyle: return "Default"
+        case .frost: return "Frost"
+        case .mono: return "Mono"
+        }
+    }
+}
+
 // MARK: - Navigation State
 
 @Observable

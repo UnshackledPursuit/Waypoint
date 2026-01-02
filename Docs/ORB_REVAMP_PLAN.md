@@ -1,4 +1,4 @@
-# ORB VIEW REVAMP PLAN
+ # ORB VIEW REVAMP PLAN
 
 **Status:** Planning Phase
 **Branch:** feature/orb-revamp (to be created)

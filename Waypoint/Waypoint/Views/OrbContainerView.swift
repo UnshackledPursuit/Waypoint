@@ -27,6 +27,7 @@ struct OrbContainerView: View {
                     title: expandedTitle,
                     portals: visiblePortals,
                     layoutMode: $sceneState.layoutMode,
+                    constellationColor: selectedConstellationColor,
                     onBack: collapse
                 ) { portal in
                     openPortal(portal)
@@ -36,7 +37,8 @@ struct OrbContainerView: View {
 
                 OrbFieldView(
                     portals: visiblePortals,
-                    layoutMode: sceneState.layoutMode
+                    layoutMode: sceneState.layoutMode,
+                    constellationColor: selectedConstellationColor
                 ) { portal in
                     openPortal(portal)
                 }
@@ -112,6 +114,15 @@ struct OrbContainerView: View {
             return id
         }
         return nil
+    }
+
+    /// The active constellation's color (for color mode)
+    private var selectedConstellationColor: Color? {
+        guard let id = selectedConstellationID,
+              let constellation = constellationManager.constellation(withID: id) else {
+            return nil
+        }
+        return constellation.color
     }
 
     private func expand() {

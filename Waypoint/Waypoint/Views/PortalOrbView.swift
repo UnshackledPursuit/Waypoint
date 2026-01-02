@@ -13,8 +13,67 @@ struct PortalOrbView: View {
 
     let portal: Portal
     var accentColor: Color = .blue
+    /// Optional constellation color - used when colorMode is .constellation
+    var constellationColor: Color? = nil
     var size: CGFloat = 64
     let onOpen: () -> Void
+
+    /// Global orb intensity from user preferences (0.0 = neutral/frosted, 1.0 = vibrant)
+    @AppStorage("orbIntensity") private var orbIntensity: Double = 0.7
+
+    /// Global orb color mode
+    @AppStorage("orbColorMode") private var orbColorModeRaw: String = OrbColorMode.defaultStyle.rawValue
+
+    private var orbColorMode: OrbColorMode {
+        OrbColorMode(rawValue: orbColorModeRaw) ?? .defaultStyle
+    }
+
+    /// The portal's natural color (from its style settings or fallback)
+    private var portalNaturalColor: Color {
+        if portal.useCustomStyle {
+            return portal.displayColor
+        } else {
+            return portal.fallbackColor
+        }
+    }
+
+    /// The effective color after applying color mode and intensity
+    /// - constellation mode: Use constellation color for all orbs
+    /// - default mode: Use portal's actual style color
+    /// - frost mode: Gray bubbles, icons keep color
+    /// - mono mode: Everything grayscale
+    private var effectiveColor: Color {
+        // First determine base color from color mode
+        let baseColor: Color
+        switch orbColorMode {
+        case .constellation:
+            baseColor = constellationColor ?? portalNaturalColor
+        case .defaultStyle:
+            baseColor = portalNaturalColor
+        case .frost, .mono:
+            return Color.gray
+        }
+
+        // Then apply intensity
+        if orbIntensity < 0.1 {
+            return Color.gray
+        }
+        return baseColor
+    }
+
+    /// Opacity multiplier based on intensity for color elements
+    private var colorOpacity: Double {
+        if orbColorMode == .frost || orbColorMode == .mono {
+            return 0.4 // Frosted glass look
+        }
+        // Range: 0.3 (very faded) to 1.0 (full vibrant)
+        return 0.3 + (orbIntensity * 0.7)
+    }
+
+    /// Whether to desaturate icons/favicons (only in mono mode)
+    private var shouldDesaturateContent: Bool {
+        orbColorMode == .mono
+    }
 
     // MARK: - Body
 
@@ -23,14 +82,14 @@ struct PortalOrbView: View {
             VStack(spacing: 8) {
                 // Glass sphere orb
                 ZStack {
-                    // Outer glow - ambient light effect
+                    // Outer glow - ambient light effect (intensity affects glow strength)
                     Circle()
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    accentColor.opacity(0.3),
-                                    accentColor.opacity(0.12),
-                                    accentColor.opacity(0.03),
+                                    effectiveColor.opacity(0.3 * colorOpacity),
+                                    effectiveColor.opacity(0.12 * colorOpacity),
+                                    effectiveColor.opacity(0.03 * colorOpacity),
                                     Color.clear
                                 ],
                                 center: .center,
@@ -40,15 +99,15 @@ struct PortalOrbView: View {
                         )
                         .frame(width: size * 1.6, height: size * 1.6)
 
-                    // Main sphere body - deeper 3D gradient
+                    // Main sphere body - deeper 3D gradient (intensity affects color saturation)
                     Circle()
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    accentColor.opacity(0.2),
-                                    accentColor.opacity(0.35),
-                                    accentColor.opacity(0.5),
-                                    accentColor.opacity(0.6)
+                                    effectiveColor.opacity(0.2 * colorOpacity),
+                                    effectiveColor.opacity(0.35 * colorOpacity),
+                                    effectiveColor.opacity(0.5 * colorOpacity),
+                                    effectiveColor.opacity(0.6 * colorOpacity)
                                 ],
                                 center: UnitPoint(x: 0.3, y: 0.25),
                                 startRadius: size * 0.05,
@@ -127,7 +186,7 @@ struct PortalOrbView: View {
                         .rotationEffect(.degrees(-30))
                 }
                 .frame(width: size * 1.6, height: size * 1.6)
-                .shadow(color: accentColor.opacity(0.35), radius: 10, y: 4)
+                .shadow(color: effectiveColor.opacity(0.35 * colorOpacity), radius: 10, y: 4)
                 .shadow(color: Color.black.opacity(0.15), radius: 5, y: 2)
 
                 // Label
@@ -160,12 +219,13 @@ struct PortalOrbView: View {
                 )
                 .clipShape(Circle())
                 .shadow(color: Color.black.opacity(0.2), radius: 3, y: 1)
+                .saturation(shouldDesaturateContent ? 0 : 1) // Grayscale in mono mode
         } else {
             // Fallback: First letter with enhanced visibility
             Text(portal.name.prefix(1).uppercased())
                 .font(.system(size: size * 0.32, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
-                .shadow(color: accentColor.opacity(0.8), radius: 4)
+                .shadow(color: effectiveColor.opacity(0.8 * colorOpacity), radius: 4)
                 .shadow(color: Color.black.opacity(0.3), radius: 2, y: 1)
         }
     }

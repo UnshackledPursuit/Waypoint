@@ -11,8 +11,8 @@ import SwiftUI
 
 // MARK: - Left Ornament
 
-/// Left floating ornament - tabs + quick actions
-/// List/Orb tab switching + Paste/Add buttons
+/// Left floating ornament - tabs + quick actions + intensity slider
+/// List/Orb tab switching + Paste/Add buttons + Global Intensity
 struct WaypointLeftOrnament: View {
 
     // MARK: - Properties
@@ -23,6 +23,19 @@ struct WaypointLeftOrnament: View {
     @Environment(ConstellationManager.self) private var constellationManager
 
     @State private var showQuickAdd = false
+
+    /// Global orb intensity: 0.0 = neutral/frosted, 1.0 = vibrant colors
+    @AppStorage("orbIntensity") private var orbIntensity: Double = 0.7
+
+    /// Global orb color mode
+    @AppStorage("orbColorMode") private var orbColorModeRaw: String = OrbColorMode.defaultStyle.rawValue
+
+    private var orbColorMode: Binding<OrbColorMode> {
+        Binding(
+            get: { OrbColorMode(rawValue: orbColorModeRaw) ?? .defaultStyle },
+            set: { orbColorModeRaw = $0.rawValue }
+        )
+    }
 
     // MARK: - Body
 
@@ -59,6 +72,18 @@ struct WaypointLeftOrnament: View {
                 isSelected: false,
                 action: { showQuickAdd = true }
             )
+
+            // Divider before color controls
+            Rectangle()
+                .fill(Color.secondary.opacity(0.3))
+                .frame(width: 20, height: 1)
+                .padding(.vertical, 2)
+
+            // Collapsible intensity control
+            IntensityControl(intensity: $orbIntensity)
+
+            // Color mode toggle (horizontal 3-way)
+            ColorModeToggle(colorMode: orbColorMode)
         }
         .padding(6)
         .glassBackgroundEffect()
@@ -146,6 +171,265 @@ private struct TabIconButton: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
+        }
+    }
+}
+
+// MARK: - Intensity Control (Collapsible)
+
+/// Collapsible intensity slider - tap button to expand slider
+/// When collapsed: subtle button that blends in
+/// When expanded: slider with improved interaction at extremes
+private struct IntensityControl: View {
+    @Binding var intensity: Double
+    @State private var isExpanded = false
+
+    /// Color mode to determine if in mono mode
+    @AppStorage("orbColorMode") private var orbColorModeRaw: String = OrbColorMode.defaultStyle.rawValue
+
+    private var isMonoMode: Bool {
+        OrbColorMode(rawValue: orbColorModeRaw) == .mono
+    }
+
+    /// Slider fill color - subtle teal instead of purple
+    private var sliderColor: Color {
+        if isMonoMode { return Color.gray }
+        return Color(red: 0.4, green: 0.7, blue: 0.8) // Soft teal
+    }
+
+    /// Icon reflects current intensity level
+    private var intensityIcon: String {
+        if intensity < 0.3 { return "circle.fill" }
+        if intensity < 0.7 { return "sun.min.fill" }
+        return "sun.max.fill"
+    }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            if isExpanded {
+                expandedSlider
+            } else {
+                collapsedButton
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+    }
+
+    // MARK: - Collapsed Button (Subtle)
+
+    private var collapsedButton: some View {
+        Button {
+            isExpanded = true
+        } label: {
+            ZStack {
+                // Subtle background - blends in with other buttons
+                Circle()
+                    .fill(Color.secondary.opacity(0.15))
+                    .frame(width: 32, height: 32)
+
+                // Icon - secondary color to blend in, not attention-grabbing
+                Image(systemName: intensityIcon)
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Expanded Slider
+
+    private var expandedSlider: some View {
+        VStack(spacing: 4) {
+            // High intensity icon (tap to set max)
+            Button {
+                intensity = 1.0
+            } label: {
+                Image(systemName: "sun.max.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(intensity > 0.7 ? sliderColor : .secondary)
+                    .frame(width: 26, height: 20)
+            }
+            .buttonStyle(.plain)
+
+            // Compact slider track
+            GeometryReader { geo in
+                ZStack(alignment: .bottom) {
+                    // Track background
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.2))
+                        .frame(width: 6)
+
+                    // Filled portion
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.gray.opacity(0.4), sliderColor],
+                                startPoint: .bottom,
+                                endPoint: .top
+                            )
+                        )
+                        .frame(width: 6, height: max(4, geo.size.height * intensity))
+
+                    // Thumb
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 14, height: 14)
+                        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+                        .offset(y: -geo.size.height * intensity + 7)
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            let newIntensity = 1.0 - (value.location.y / geo.size.height)
+                            intensity = min(max(newIntensity, 0), 1)
+                        }
+                )
+            }
+            .frame(width: 32, height: 60)
+
+            // Low intensity icon (tap to set min)
+            Button {
+                intensity = 0.0
+            } label: {
+                Image(systemName: "snowflake")
+                    .font(.system(size: 12))
+                    .foregroundStyle(intensity < 0.3 ? .white : .secondary)
+                    .frame(width: 26, height: 20)
+            }
+            .buttonStyle(.plain)
+
+            // Close button - easy to hit
+            Button {
+                isExpanded = false
+            } label: {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.green)
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.black.opacity(0.2))
+        )
+    }
+}
+
+// MARK: - Color Mode Toggle (Collapsible Vertical 4-way)
+
+/// Collapsible vertical 4-way toggle for orb color mode
+/// Auto-collapses after inactivity, shows selected mode when collapsed
+private struct ColorModeToggle: View {
+    @Binding var colorMode: OrbColorMode
+    @State private var isExpanded = false
+    @State private var collapseWorkItem: DispatchWorkItem?
+
+    var body: some View {
+        VStack(spacing: 2) {
+            if isExpanded {
+                // Expanded: Show all 4 options
+                ForEach(OrbColorMode.allCases, id: \.self) { mode in
+                    ColorModeButton(
+                        mode: mode,
+                        isSelected: colorMode == mode,
+                        action: {
+                            colorMode = mode
+                            scheduleCollapse()
+                        }
+                    )
+                }
+            } else {
+                // Collapsed: Show only selected mode (tap to expand) - subtle, blends in
+                Button {
+                    isExpanded = true
+                    scheduleCollapse()
+                } label: {
+                    Image(systemName: colorMode.icon)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary) // Subtle - no color when collapsed
+                        .frame(width: 26, height: 26)
+                        .background(
+                            Circle()
+                                .fill(Color.secondary.opacity(0.15))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.secondary.opacity(0.15))
+        )
+        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+    }
+
+    private func scheduleCollapse() {
+        collapseWorkItem?.cancel()
+        let workItem = DispatchWorkItem {
+            withAnimation {
+                isExpanded = false
+            }
+        }
+        collapseWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0, execute: workItem)
+    }
+
+    private func modeColor(for mode: OrbColorMode) -> Color {
+        switch mode {
+        case .constellation: return .orange
+        case .defaultStyle: return .blue
+        case .frost: return .cyan
+        case .mono: return .secondary
+        }
+    }
+}
+
+private struct ColorModeButton: View {
+    let mode: OrbColorMode
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: modeIcon)
+                .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? modeColor : .secondary)
+                .frame(width: 26, height: 26)
+                .background(
+                    Circle()
+                        .fill(isSelected ? modeColor.opacity(0.25) : (isHovering ? Color.white.opacity(0.1) : Color.clear))
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
+    }
+
+    /// Custom icon for better visibility - mono uses a clearer icon
+    private var modeIcon: String {
+        switch mode {
+        case .mono: return "circle.slash" // More visible than circle.lefthalf.strikethrough
+        default: return mode.icon
+        }
+    }
+
+    private var modeColor: Color {
+        switch mode {
+        case .constellation: return .orange
+        case .defaultStyle: return .blue
+        case .frost: return .cyan
+        case .mono: return .secondary
         }
     }
 }

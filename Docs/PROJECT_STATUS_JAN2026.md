@@ -1,8 +1,8 @@
 # PROJECT STATUS — January 2026
 
 **Last Updated:** January 2, 2026
-**Branch:** main
-**Commit:** e9caff9
+**Branch:** feature/orb-revamp (merging to main)
+**Phase:** 2.6 Complete - Intensity & Color Mode System
 
 ---
 
@@ -28,12 +28,37 @@ Waypoint List View is **production-ready**. The ornament system and Quick Add fu
 - Last opened tracking and display
 
 ### Ornament System (Refined)
-- **Left Ornament:** List/Orb tabs + Paste/Add quick actions
+- **Left Ornament:** List/Orb tabs + Paste/Add quick actions + Intensity/Color controls
 - **Bottom Ornament:** All/Pinned filters + scrollable constellation pills + Launch
 - Larger touch targets (36px) for visionOS accuracy
 - Hover-reveal labels on constellation pills
 - Context menu on constellation pills (Edit/Launch All)
 - Launch button: icon-only with constellation color
+
+### Global Intensity & Color Mode System (NEW - Jan 2, 2026)
+- **Intensity Slider:** Collapsible vertical slider in left ornament
+  - 0.0 = frosted/neutral glass, 1.0 = vibrant colors
+  - Tap sun icon for max, snowflake for min
+  - Collapsed state shows subtle icon (blends in)
+  - Teal fill color when expanded (not attention-grabbing)
+- **Color Mode Toggle:** 4-way collapsible toggle
+  - Constellation mode (orange sparkles): All orbs use active constellation color
+  - Default mode (blue palette): Each portal uses its own style color
+  - Frost mode (cyan snowflake): Gray bubbles, icons keep color
+  - Mono mode (gray slash): Complete grayscale - everything loses color
+  - Auto-collapses after 3 seconds of inactivity
+  - Shows selected mode icon when collapsed (subtle, no color)
+- **Mono Mode Effects:**
+  - Orb bubbles grayscale
+  - Favicons grayscale (saturation: 0)
+  - Constellation icons in list view grayscale
+  - Pin icons grayscale
+  - Bottom ornament constellation pills grayscale
+  - Launch button grayscale
+- **Multi-constellation handling:**
+  - List view: Gradient glow for portals in multiple constellations
+  - Orb view: Uses active constellation color
+- **Persistence:** All settings stored via @AppStorage
 
 ### Quick Add Sheet (Feature Complete)
 - Constellation picker at top for quick switching
@@ -168,3 +193,34 @@ git push -u origin feature/orb-revamp
 - Adaptive vertical/horizontal is expected
 - No arbitrary limits (8 orbs max is removed)
 - Scroll when needed, don't shrink
+
+---
+
+## Future Features (Backlog)
+
+### Ornament Enhancements
+- **Collapsible/Expand Toggle:** Add ability to collapse/expand ornaments on both left and bottom sides. When collapsed, show minimal indicator; tap to expand. Reduces visual clutter when not actively managing.
+
+### Visual Effects & Immersion
+- **Environmental Glow:** In constellation mode, emit a subtle glow from the app that affects the visionOS environment. The constellation's color would cast ambient light into the user's space. Could combine with other aesthetic effects for a more immersive experience.
+
+### Other Potential Features
+- Day/night environment toggle (requires visionOS API - currently not exposed)
+- Orb size preferences (user-configurable)
+- Animation customization (speed, style)
+
+---
+
+## Completed Phases
+
+### Phase 2.5: Ornament System Overhaul (Complete)
+- Unified left/bottom ornament design
+- Quick Add sheet with constellation picker
+- Portal pack templates
+
+### Phase 2.6: Intensity & Color Mode System (Complete - Jan 2, 2026)
+- Global intensity slider with collapsible UI
+- 4-way color mode toggle (constellation, default, frost, mono)
+- Full mono mode grayscale across entire app
+- Auto-collapse after inactivity
+- Multi-constellation gradient support
