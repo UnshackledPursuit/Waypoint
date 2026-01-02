@@ -6,27 +6,65 @@
 //
 
 import Foundation
+import SwiftUI
 
 // MARK: - Portal Type
 
 enum PortalType: String, Codable {
     case web        // https://, http://
-    case file       // file:// (copied to app storage)
+    case file       // file:// (general files)
+    case pdf        // PDF documents
+    case note       // Apple Notes
+    case freeform   // Apple Freeform boards
     case usdz       // .usdz 3D files
     case folder     // Folder references
-    case icloud     // icloud.com URLs
+    case icloud     // icloud.com URLs (generic)
+    case icloudDrive // iCloud Drive files
+    case numbers    // Apple Numbers
+    case pages      // Apple Pages
+    case keynote    // Apple Keynote
     case app        // Custom schemes (notion://, etc.)
 
     static func detect(from url: URL) -> PortalType {
-        // Check for USDZ files first
-        if url.pathExtension.lowercased() == "usdz" { return .usdz }
+        let ext = url.pathExtension.lowercased()
+        let urlString = url.absoluteString.lowercased()
+        let path = url.path.lowercased()
+
+        // Check file extensions first
+        if ext == "usdz" { return .usdz }
+        if ext == "pdf" { return .pdf }
+        if ext == "numbers" { return .numbers }
+        if ext == "pages" { return .pages }
+        if ext == "key" || ext == "keynote" { return .keynote }
+
+        // Check for Apple app URLs and iCloud links
+        // Freeform detection
+        if urlString.contains("freeform") || url.scheme == "freeform" ||
+           urlString.contains("com.apple.freeform") { return .freeform }
+
+        // Notes detection - various URL patterns
+        if urlString.contains("applenotes") || urlString.contains("notes.app") ||
+           url.scheme == "applenotes" || url.scheme == "mobilenotes" ||
+           urlString.contains("com.apple.notes") ||
+           (url.host?.contains("icloud.com") == true && urlString.contains("/notes/")) { return .note }
+
+        // iCloud.com URL pattern detection
+        if url.host?.contains("icloud.com") == true {
+            // Check path components for app-specific patterns
+            if urlString.contains("/numbers/") || path.contains("numbers") { return .numbers }
+            if urlString.contains("/pages/") || path.contains("pages") { return .pages }
+            if urlString.contains("/keynote/") || path.contains("keynote") { return .keynote }
+            if urlString.contains("/freeform/") || path.contains("freeform") { return .freeform }
+            if urlString.contains("/notes/") || path.contains("notes") { return .note }
+            if urlString.contains("/iclouddrive/") || urlString.contains("/drive/") { return .icloudDrive }
+            return .icloud
+        }
 
         // Check for folders
         if url.hasDirectoryPath { return .folder }
 
         // Check scheme-based types
         if url.scheme == "file" { return .file }
-        if url.host?.contains("icloud.com") == true { return .icloud }
         if url.scheme == "http" || url.scheme == "https" { return .web }
         return .app
     }
@@ -35,12 +73,76 @@ enum PortalType: String, Codable {
         switch self {
         case .web: return "globe"
         case .file: return "doc.fill"
+        case .pdf: return "doc.text.fill"
+        case .note: return "note.text"
+        case .freeform: return "pencil.and.scribble"
         case .usdz: return "cube.fill"
         case .folder: return "folder.fill"
         case .icloud: return "icloud.fill"
+        case .icloudDrive: return "externaldrive.fill.badge.icloud"
+        case .numbers: return "tablecells.fill"
+        case .pages: return "doc.richtext.fill"
+        case .keynote: return "play.rectangle.fill"
         case .app: return "app.fill"
         }
     }
+
+    /// App-specific default color (matching Apple's app colors)
+    var defaultColor: Color {
+        switch self {
+        case .web: return Color(red: 0.2, green: 0.2, blue: 0.25)       // Dark gray/black for Safari
+        case .file: return Color(red: 0.0, green: 0.48, blue: 1.0)     // Blue (generic file)
+        case .pdf: return Color(red: 0.96, green: 0.26, blue: 0.21)    // Red for PDF
+        case .note: return Color(red: 0.98, green: 0.80, blue: 0.18)   // Yellow for Notes
+        case .freeform: return Color(red: 0.4, green: 0.7, blue: 0.95) // Soft blue for Freeform
+        case .usdz: return Color(red: 0.35, green: 0.35, blue: 0.40)   // Gray for 3D
+        case .folder: return Color(red: 0.30, green: 0.69, blue: 0.31) // Green for Folders/Files
+        case .icloud: return Color(red: 0.35, green: 0.60, blue: 0.95) // iCloud blue
+        case .icloudDrive: return Color(red: 0.30, green: 0.69, blue: 0.31) // Green for iCloud Drive (Files app)
+        case .numbers: return Color(red: 0.20, green: 0.78, blue: 0.35) // Numbers green
+        case .pages: return Color(red: 1.0, green: 0.58, blue: 0.0)    // Pages orange
+        case .keynote: return Color(red: 0.0, green: 0.60, blue: 0.98) // Keynote blue
+        case .app: return Color(red: 0.50, green: 0.50, blue: 0.55)    // Gray for unknown apps
+        }
+    }
+
+    /// Display name for the type
+    var displayName: String {
+        switch self {
+        case .web: return "Website"
+        case .file: return "File"
+        case .pdf: return "PDF"
+        case .note: return "Note"
+        case .freeform: return "Freeform"
+        case .usdz: return "3D Model"
+        case .folder: return "Folder"
+        case .icloud: return "iCloud"
+        case .icloudDrive: return "iCloud Drive"
+        case .numbers: return "Numbers"
+        case .pages: return "Pages"
+        case .keynote: return "Keynote"
+        case .app: return "App"
+        }
+    }
+
+    /// Whether this type should show a source badge
+    var showSourceBadge: Bool {
+        switch self {
+        case .web: return false
+        case .file, .pdf, .note, .freeform, .usdz, .folder, .icloud, .icloudDrive, .numbers, .pages, .keynote, .app: return true
+        }
+    }
+
+    /// All available icons for custom selection
+    static let availableIcons: [String] = [
+        "globe", "doc.fill", "doc.text.fill", "note.text", "pencil.and.scribble",
+        "cube.fill", "folder.fill", "icloud.fill", "externaldrive.fill.badge.icloud",
+        "tablecells.fill", "doc.richtext.fill", "play.rectangle.fill", "app.fill",
+        "link", "star.fill", "heart.fill", "bolt.fill", "flame.fill",
+        "book.fill", "bookmark.fill", "tag.fill", "photo.fill", "video.fill",
+        "music.note", "gamecontroller.fill", "briefcase.fill", "cart.fill",
+        "creditcard.fill", "house.fill", "building.2.fill", "mappin.circle.fill"
+    ]
 }
 
 // MARK: - Portal Model
@@ -54,8 +156,11 @@ struct Portal: Identifiable, Codable, Hashable {
     var customThumbnail: Data?      // User override image
     var customColorHex: String?     // Custom fallback color (hex)
     var customInitials: String?     // Custom initials (1-3 chars)
+    var customIcon: String?         // Custom SF Symbol icon name
     var useCustomThumbnail: Bool    // Use custom image instead of auto
-    var useCustomStyle: Bool        // Use custom color/initials instead of auto
+    var useCustomStyle: Bool        // Use custom color/initials/icon instead of auto
+    var useIconInsteadOfInitials: Bool  // Toggle: true = show icon, false = show initials
+    var keepFaviconWithCustomStyle: Bool  // Keep favicon but use custom color for glow
     var dateAdded: Date
     var lastOpened: Date?
     var isFavorite: Bool
@@ -72,7 +177,15 @@ struct Portal: Identifiable, Codable, Hashable {
     var hasCustomStyling: Bool {
         useCustomThumbnail || useCustomStyle
     }
-    
+
+    /// Returns the icon to display - custom if set, otherwise type default
+    var displayIcon: String {
+        if useCustomStyle, let icon = customIcon, !icon.isEmpty {
+            return icon
+        }
+        return type.iconName
+    }
+
     // MARK: - Initialization
 
     init(
@@ -84,8 +197,11 @@ struct Portal: Identifiable, Codable, Hashable {
         customThumbnail: Data? = nil,
         customColorHex: String? = nil,
         customInitials: String? = nil,
+        customIcon: String? = nil,
         useCustomThumbnail: Bool = false,
         useCustomStyle: Bool = false,
+        useIconInsteadOfInitials: Bool = true,  // Default to icon
+        keepFaviconWithCustomStyle: Bool = false,  // Keep favicon with custom glow
         dateAdded: Date = Date(),
         lastOpened: Date? = nil,
         isFavorite: Bool = false,
@@ -110,8 +226,11 @@ struct Portal: Identifiable, Codable, Hashable {
         self.customThumbnail = customThumbnail
         self.customColorHex = customColorHex
         self.customInitials = customInitials
+        self.customIcon = customIcon
         self.useCustomThumbnail = useCustomThumbnail
         self.useCustomStyle = useCustomStyle
+        self.useIconInsteadOfInitials = useIconInsteadOfInitials
+        self.keepFaviconWithCustomStyle = keepFaviconWithCustomStyle
         self.dateAdded = dateAdded
         self.lastOpened = lastOpened
         self.isFavorite = isFavorite

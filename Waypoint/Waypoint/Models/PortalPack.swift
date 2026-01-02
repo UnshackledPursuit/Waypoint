@@ -33,6 +33,7 @@ extension PortalPack {
     static let allPacks: [PortalPack] = [
         aiPack,
         aiArtistsPack,
+        indiePack,
         socialPack,
         developerPack,
         productivityPack,
@@ -51,7 +52,7 @@ extension PortalPack {
     
     static let aiPack = PortalPack(
         name: "AI",
-        icon: "🤖",
+        icon: "cpu.fill",
         portals: [
             PortalTemplate(name: "Claude", url: "https://claude.ai"),
             PortalTemplate(name: "ChatGPT", url: "https://chatgpt.com"),
@@ -60,10 +61,10 @@ extension PortalPack {
             PortalTemplate(name: "Grok", url: "https://grok.com")
         ]
     )
-    
+
     static let pulsePack = PortalPack(
         name: "Pulse",
-        icon: "💫",
+        icon: "sparkles",
         portals: [
             PortalTemplate(name: "YouTube", url: "https://www.youtube.com"),
             PortalTemplate(name: "X", url: "https://x.com"),
@@ -72,10 +73,10 @@ extension PortalPack {
             PortalTemplate(name: "TikTok", url: "https://www.tiktok.com")
         ]
     )
-    
+
     static let launchpadPack = PortalPack(
         name: "Launchpad",
-        icon: "🚀",
+        icon: "bolt.fill",
         portals: [
             PortalTemplate(name: "Gmail", url: "https://mail.google.com"),
             PortalTemplate(name: "Calendar", url: "https://calendar.google.com"),
@@ -84,10 +85,10 @@ extension PortalPack {
             PortalTemplate(name: "Figma", url: "https://figma.com")
         ]
     )
-    
+
     static let aiArtistsPack = PortalPack(
         name: "AI Artists",
-        icon: "🎨",
+        icon: "paintbrush.fill",
         portals: [
             PortalTemplate(name: "Midjourney", url: "https://www.midjourney.com"),
             PortalTemplate(name: "DALL-E", url: "https://openai.com/dall-e"),
@@ -98,10 +99,26 @@ extension PortalPack {
             PortalTemplate(name: "Kling", url: "https://klingai.com")
         ]
     )
-    
+
+    static let indiePack = PortalPack(
+        name: "Indie",
+        icon: "sparkle.magnifyingglass",
+        portals: [
+            PortalTemplate(name: "Vibe Code", url: "https://vibe.dev"),
+            PortalTemplate(name: "Thumio", url: "https://thumio.com"),
+            PortalTemplate(name: "Photo AI", url: "https://photoai.com"),
+            PortalTemplate(name: "Interior AI", url: "https://interiorai.com"),
+            PortalTemplate(name: "Nomad List", url: "https://nomadlist.com"),
+            PortalTemplate(name: "Remote OK", url: "https://remoteok.com"),
+            PortalTemplate(name: "Product Hunt", url: "https://www.producthunt.com"),
+            PortalTemplate(name: "Indie Hackers", url: "https://www.indiehackers.com"),
+            PortalTemplate(name: "Gumroad", url: "https://gumroad.com")
+        ]
+    )
+
     static let socialPack = PortalPack(
         name: "Social",
-        icon: "📱",
+        icon: "bubble.left.and.bubble.right.fill",
         portals: [
             PortalTemplate(name: "X", url: "https://x.com"),
             PortalTemplate(name: "Grok (X)", url: "https://x.com/i/grok"),
@@ -111,10 +128,10 @@ extension PortalPack {
             PortalTemplate(name: "Threads", url: "https://www.threads.net")
         ]
     )
-    
+
     static let developerPack = PortalPack(
         name: "Developer",
-        icon: "💻",
+        icon: "chevron.left.forwardslash.chevron.right",
         portals: [
             PortalTemplate(name: "GitHub", url: "https://github.com"),
             PortalTemplate(name: "GitHub App", url: "github://"),
@@ -127,10 +144,10 @@ extension PortalPack {
             PortalTemplate(name: "Vercel", url: "https://vercel.com")
         ]
     )
-    
+
     static let productivityPack = PortalPack(
         name: "Productivity",
-        icon: "⚡",
+        icon: "square.grid.2x2.fill",
         portals: [
             PortalTemplate(name: "Gmail", url: "https://mail.google.com"),
             PortalTemplate(name: "Calendar", url: "https://calendar.google.com"),
@@ -141,10 +158,10 @@ extension PortalPack {
             PortalTemplate(name: "Slack App", url: "slack://open")
         ]
     )
-    
+
     static let creativePack = PortalPack(
         name: "Creative",
-        icon: "🎬",
+        icon: "wand.and.stars",
         portals: [
             PortalTemplate(name: "Figma Web", url: "https://figma.com"),
             PortalTemplate(name: "Figma App", url: "figma://"),

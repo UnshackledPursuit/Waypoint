@@ -1215,34 +1215,179 @@ struct PortalRow: View {
     }
     
     // MARK: - Thumbnail
-    
+
     @ViewBuilder
     private var thumbnailView: some View {
-        if let thumbnailData = portal.displayThumbnail,
-           let uiImage = UIImage(data: thumbnailData) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFit()
-        } else {
-            // Vibrant colored fallback with initials
+        // Determine the glow color based on custom style settings
+        let color: Color = {
+            if portal.useCustomStyle {
+                return portal.displayColor
+            } else if portal.displayThumbnail != nil {
+                return Color.gray
+            } else if portal.type != .web {
+                return portal.displayColor
+            } else {
+                return portal.fallbackColor
+            }
+        }()
+
+        ZStack {
+            // Outer glow
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            color.opacity(0.4),
+                            color.opacity(0.15),
+                            Color.clear
+                        ],
+                        center: .center,
+                        startRadius: 12,
+                        endRadius: 28
+                    )
+                )
+                .frame(width: 50, height: 50)
+
+            // Main orb content
             ZStack {
+                if portal.useCustomStyle && portal.keepFaviconWithCustomStyle,
+                   let thumbnailData = portal.displayThumbnail,
+                   let uiImage = UIImage(data: thumbnailData) {
+                    // Custom style with kept favicon - use custom color glow but show favicon
+                    Circle()
+                        .fill(.ultraThinMaterial)
+
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(Circle())
+                        .padding(5)
+                } else if portal.useCustomStyle {
+                    // Custom style - colored orb with icon/initials
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    portal.displayColor.opacity(0.5),
+                                    portal.displayColor.opacity(0.7),
+                                    portal.displayColor.opacity(0.85)
+                                ],
+                                center: UnitPoint(x: 0.3, y: 0.25),
+                                startRadius: 0,
+                                endRadius: 20
+                            )
+                        )
+
+                    // Show icon or initials based on toggle
+                    if portal.useIconInsteadOfInitials {
+                        Image(systemName: portal.displayIcon)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.3), radius: 1, y: 1)
+                    } else {
+                        Text(portal.displayInitials)
+                            .font(.system(size: portal.displayInitials.count > 1 ? 12 : 16, weight: .bold))
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.3), radius: 1, y: 1)
+                    }
+                } else if let thumbnailData = portal.displayThumbnail,
+                   let uiImage = UIImage(data: thumbnailData) {
+                    // Favicon with glass background
+                    Circle()
+                        .fill(.ultraThinMaterial)
+
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(Circle())
+                        .padding(5)
+                } else if portal.type != .web {
+                    // Non-web portals - colored orb with type icon
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    portal.displayColor.opacity(0.5),
+                                    portal.displayColor.opacity(0.7),
+                                    portal.displayColor.opacity(0.85)
+                                ],
+                                center: UnitPoint(x: 0.3, y: 0.25),
+                                startRadius: 0,
+                                endRadius: 20
+                            )
+                        )
+
+                    Image(systemName: portal.type.iconName)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.3), radius: 1, y: 1)
+                } else {
+                    // Web portals without favicon - colored orb with initial
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    portal.fallbackColor.opacity(0.5),
+                                    portal.fallbackColor.opacity(0.7),
+                                    portal.fallbackColor.opacity(0.85)
+                                ],
+                                center: UnitPoint(x: 0.3, y: 0.25),
+                                startRadius: 0,
+                                endRadius: 20
+                            )
+                        )
+
+                    Text(portal.avatarInitial)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.3), radius: 1, y: 1)
+                }
+
+                // Glass specular highlight
                 Circle()
                     .fill(
                         RadialGradient(
                             colors: [
-                                portal.displayColor.opacity(0.95),
-                                portal.displayColor.opacity(0.7)
+                                Color.white.opacity(0.6),
+                                Color.white.opacity(0.2),
+                                Color.clear
                             ],
-                            center: .topLeading,
+                            center: UnitPoint(x: 0.25, y: 0.2),
                             startRadius: 0,
-                            endRadius: 25
+                            endRadius: 14
                         )
                     )
-                    .shadow(color: portal.displayColor.opacity(0.4), radius: 4, y: 2)
 
-                Text(portal.displayInitials)
-                    .font(.system(size: portal.displayInitials.count > 1 ? 14 : 18, weight: .bold))
-                    .foregroundStyle(.white)
+                // Rim light
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.5),
+                                Color.white.opacity(0.1),
+                                Color.white.opacity(0.05),
+                                Color.white.opacity(0.15)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .frame(width: 40, height: 40)
+            .shadow(color: color.opacity(0.4), radius: 6, y: 3)
+
+            // Source badge for non-web portals
+            if portal.type.showSourceBadge {
+                Circle()
+                    .fill(.ultraThickMaterial)
+                    .frame(width: 16, height: 16)
+                    .overlay(
+                        Image(systemName: portal.type.iconName)
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(portal.displayColor)
+                    )
+                    .offset(x: 16, y: 16)
             }
         }
     }
@@ -1267,12 +1412,14 @@ private let relativeFormatter: RelativeDateTimeFormatter = {
 
 private struct QuickAddPortalView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(PortalManager.self) private var portalManager
 
     let initialURL: String
     let onCancel: () -> Void
     let onSubmit: (String) -> Void
 
     @State private var urlText: String
+    @State private var expandedPack: UUID?
 
     init(initialURL: String, onCancel: @escaping () -> Void, onSubmit: @escaping (String) -> Void) {
         self.initialURL = initialURL
@@ -1283,28 +1430,48 @@ private struct QuickAddPortalView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                TextField("Enter URL or site name...", text: $urlText)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.URL)
-                    .autocapitalization(.none)
-                    .autocorrectionDisabled()
-                    .padding(.horizontal)
-                    .onSubmit {
-                        if !urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            onSubmit(urlText)
-                            dismiss()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // URL Input Section
+                        VStack(spacing: 8) {
+                            TextField("Enter URL or site name...", text: $urlText)
+                                .textFieldStyle(.roundedBorder)
+                                .textContentType(.URL)
+                                .autocapitalization(.none)
+                                .autocorrectionDisabled()
+                                .onSubmit {
+                                    if !urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        onSubmit(urlText)
+                                        dismiss()
+                                    }
+                                }
+
+                            Text("Enter a URL like \"youtube.com\" or \"https://github.com\"")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal)
+
+                        Divider()
+                            .padding(.horizontal)
+
+                        // Quick Start Packs Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Quick Start")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal)
+
+                            ForEach(PortalPack.allPacks) { pack in
+                                quickStartPackRow(pack, scrollProxy: proxy)
+                                    .id(pack.id)
+                            }
                         }
                     }
-
-                Text("Enter a URL like \"youtube.com\" or \"https://github.com\"")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-
-                Spacer()
+                    .padding(.vertical)
+                }
             }
-            .padding(.top, 16)
             .navigationTitle("Quick Add")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1323,7 +1490,221 @@ private struct QuickAddPortalView: View {
                 }
             }
         }
-        .presentationDetents([.height(180)])
-        .presentationDragIndicator(.visible)
+    }
+
+    @ViewBuilder
+    private func quickStartPackRow(_ pack: PortalPack, scrollProxy: ScrollViewProxy) -> some View {
+        let isExpanded = expandedPack == pack.id
+
+        VStack(spacing: 0) {
+            // Pack header - tap to expand/collapse
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    if isExpanded {
+                        expandedPack = nil
+                    } else {
+                        expandedPack = pack.id
+                        // Auto-scroll to show expanded content
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            withAnimation {
+                                scrollProxy.scrollTo(pack.id, anchor: .top)
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    // Pack icon orb
+                    ZStack {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [packColor(for: pack.name).opacity(0.5), packColor(for: pack.name).opacity(0.8)],
+                                    center: UnitPoint(x: 0.3, y: 0.3),
+                                    startRadius: 0,
+                                    endRadius: 14
+                                )
+                            )
+                            .frame(width: 28, height: 28)
+
+                        Image(systemName: pack.icon)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+
+                    Text(pack.name)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Text("\(pack.portals.count) portals")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal)
+
+            // Expanded portal list
+            if isExpanded {
+                VStack(spacing: 6) {
+                    ForEach(pack.portals) { template in
+                        quickStartPortalButton(template)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func quickStartPortalButton(_ template: PortalTemplate) -> some View {
+        let color = colorForURL(template.url)
+
+        Button {
+            // Add this portal directly
+            let portal = Portal(name: template.name, url: template.url)
+            portalManager.add(portal)
+            Task {
+                await portalManager.fetchFavicon(for: portal.id)
+            }
+            dismiss()
+        } label: {
+            HStack(spacing: 12) {
+                // Glassy orb with favicon
+                ZStack {
+                    // Outer glow
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    color.opacity(0.3),
+                                    color.opacity(0.1),
+                                    Color.clear
+                                ],
+                                center: .center,
+                                startRadius: 8,
+                                endRadius: 18
+                            )
+                        )
+                        .frame(width: 32, height: 32)
+
+                    // Glass orb background
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 26, height: 26)
+
+                    // Favicon or fallback
+                    AsyncImage(url: faviconURL(for: template.url)) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 18, height: 18)
+                                .clipShape(Circle())
+                        case .failure, .empty:
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        RadialGradient(
+                                            colors: [color.opacity(0.6), color.opacity(0.85)],
+                                            center: UnitPoint(x: 0.3, y: 0.25),
+                                            startRadius: 0,
+                                            endRadius: 9
+                                        )
+                                    )
+                                    .frame(width: 18, height: 18)
+                                Text(String(template.name.prefix(1)).uppercased())
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+
+                    // Glass highlight
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.white.opacity(0.4), Color.clear],
+                                center: UnitPoint(x: 0.25, y: 0.2),
+                                startRadius: 0,
+                                endRadius: 10
+                            )
+                        )
+                        .frame(width: 26, height: 26)
+
+                    // Rim light
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.4), Color.white.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.5
+                        )
+                        .frame(width: 26, height: 26)
+                }
+                .shadow(color: color.opacity(0.3), radius: 4, y: 2)
+
+                Text(template.name)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                Image(systemName: "plus.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.body)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(.ultraThinMaterial.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func faviconURL(for urlString: String) -> URL? {
+        guard let url = URL(string: urlString),
+              let host = url.host else {
+            return nil
+        }
+        return URL(string: "https://icons.duckduckgo.com/ip3/\(host).ico")
+    }
+
+    private func colorForURL(_ urlString: String) -> Color {
+        guard let url = URL(string: urlString),
+              let host = url.host else {
+            return .blue
+        }
+        return Color.fromHost(host)
+    }
+
+    private func packColor(for packName: String) -> Color {
+        switch packName {
+        case "AI": return Color(red: 0.4, green: 0.6, blue: 1.0)  // Blue
+        case "Pulse": return Color(red: 1.0, green: 0.4, blue: 0.6)  // Pink
+        case "Launchpad": return Color(red: 1.0, green: 0.7, blue: 0.2)  // Orange
+        case "AI Artists": return Color(red: 0.8, green: 0.4, blue: 0.9)  // Purple
+        case "Indie": return Color(red: 0.95, green: 0.6, blue: 0.1)  // Gold/Amber
+        case "Social": return Color(red: 0.3, green: 0.8, blue: 0.7)  // Teal
+        case "Developer": return Color(red: 0.3, green: 0.7, blue: 0.4)  // Green
+        case "Productivity": return Color(red: 0.9, green: 0.5, blue: 0.2)  // Deep Orange
+        case "Creative": return Color(red: 0.9, green: 0.3, blue: 0.5)  // Magenta
+        default: return Color.blue
+        }
     }
 }

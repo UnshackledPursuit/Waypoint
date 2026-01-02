@@ -161,7 +161,50 @@
 
 ---
 
-## Step 3.9 — Fix Custom Sort (Drag Handles) 🟡 OPTIONAL
+## Step 3.9 — Glassy Orb UI Polish ✅ Completed
+
+**Goal:** Unify visual aesthetic across all portal displays with premium glass orb styling.
+
+**Implementation completed:**
+
+1. **Glassy Orb Aesthetic (all views):**
+   - Outer glow (RadialGradient with app-type color)
+   - Glass specular highlight (top-left)
+   - Rim light stroke (LinearGradient)
+   - Colored drop shadow
+   - Applied to: PortalListView, QuickStartPortalsView, AddPortalView
+
+2. **Portal Model Enhancement:**
+   - Added `keepFaviconWithCustomStyle: Bool` property
+   - Allows custom glow color while preserving fetched favicon
+   - Three-way toggle: default style, custom style, custom style + keep favicon
+
+3. **AddPortalView Improvements:**
+   - Quick start orbs now create portals directly (one-tap creation)
+   - Removed Preview section from Create Portal screen
+   - Added "Keep Favicon" toggle in Custom Style section
+   - Reordered Edit Portal form: Custom Style + Constellations at top for favicon portals
+   - Hero preview reflects keepFaviconWithCustomStyle state
+
+4. **QuickStartPortalsView Enhancements:**
+   - Favicons fetched via DuckDuckGo API
+   - Glassy orb styling with fallback to colored initial
+
+5. **PortalListView Updates:**
+   - Full glassy orb thumbnailView rewrite
+   - Supports all combinations: custom style, favicon, keep favicon + custom color, type icon, fallback initial
+   - quickStartPortalButton with matching glass aesthetic
+
+6. **Portal Pack Updates:**
+   - Added Vibe Code to Indie developer pack
+   - Freeform default color changed to soft blue (0.4, 0.7, 0.95)
+
+**Output:** Consistent premium glass orb aesthetic across entire app.
+**Status:** Completed
+
+---
+
+## Step 3.10 — Fix Custom Sort (Drag Handles) 🟡 OPTIONAL
 
 **Goal:** Re-enable drag-to-reorder portals without breaking long-press micro-actions.
 

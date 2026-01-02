@@ -39,15 +39,14 @@ struct QuickStartPortalsView: View {
                     ], spacing: 20) {
                         ForEach(packs) { pack in
                             VStack(alignment: .leading, spacing: 12) {
-                                // Pack header
-                                HStack {
-                                    Text(pack.icon)
-                                        .font(.title2)
+                                // Pack header with glass orb icon
+                                HStack(spacing: 10) {
+                                    packIconOrb(for: pack)
                                     Text(pack.name)
                                         .font(.headline)
                                 }
                                 .padding(.bottom, 4)
-                                
+
                                 // Portals in pack
                                 ForEach(pack.portals) { template in
                                     Button {
@@ -59,40 +58,8 @@ struct QuickStartPortalsView: View {
                                                 .foregroundStyle(selectedPortals.contains(template.id) ? .green : .secondary)
                                                 .font(.system(size: 20))
 
-                                            // Favicon from DuckDuckGo or fallback
-                                            AsyncImage(url: faviconURL(for: template.url)) { phase in
-                                                switch phase {
-                                                case .success(let image):
-                                                    image
-                                                        .resizable()
-                                                        .scaledToFit()
-                                                        .frame(width: 24, height: 24)
-                                                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                                                case .failure, .empty:
-                                                    // Fallback to colored initial
-                                                    ZStack {
-                                                        Circle()
-                                                            .fill(
-                                                                RadialGradient(
-                                                                    colors: [
-                                                                        colorForURL(template.url).opacity(0.95),
-                                                                        colorForURL(template.url).opacity(0.7)
-                                                                    ],
-                                                                    center: .topLeading,
-                                                                    startRadius: 0,
-                                                                    endRadius: 15
-                                                                )
-                                                            )
-                                                            .frame(width: 24, height: 24)
-
-                                                        Text(String(template.name.prefix(1)).uppercased())
-                                                            .font(.system(size: 12, weight: .bold))
-                                                            .foregroundStyle(.white)
-                                                    }
-                                                @unknown default:
-                                                    EmptyView()
-                                                }
-                                            }
+                                            // Glassy orb with favicon
+                                            glassyOrbIcon(for: template)
 
                                             Text(template.name)
                                                 .font(.subheadline)
@@ -103,20 +70,24 @@ struct QuickStartPortalsView: View {
                                     }
                                     .buttonStyle(.plain)
                                 }
-                                
-                                // Select All button
+
+                                // Select All button - subtle glass style
                                 Button {
                                     selectAllInPack(pack)
                                 } label: {
-                                    HStack {
-                                        Image(systemName: "checklist")
-                                            .foregroundStyle(.blue)
+                                    let allSelected = Set(pack.portals.map { $0.id }).isSubset(of: selectedPortals)
+                                    HStack(spacing: 6) {
+                                        Image(systemName: allSelected ? "checkmark.circle.fill" : "circle.dashed")
                                             .font(.caption)
-                                        Text("Select All")
-                                            .foregroundStyle(.blue)
+                                        Text(allSelected ? "Deselect All" : "Select All")
                                             .font(.caption)
                                     }
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(.ultraThinMaterial, in: Capsule())
                                 }
+                                .buttonStyle(.plain)
                                 .padding(.top, 4)
                             }
                             .padding()
@@ -216,6 +187,149 @@ struct QuickStartPortalsView: View {
         dismiss()
     }
     
+    // MARK: - Pack Icon Orb
+
+    @ViewBuilder
+    private func packIconOrb(for pack: PortalPack) -> some View {
+        let color = packColor(for: pack.name)
+
+        ZStack {
+            // Main orb with gradient
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            color.opacity(0.5),
+                            color.opacity(0.8)
+                        ],
+                        center: UnitPoint(x: 0.3, y: 0.3),
+                        startRadius: 0,
+                        endRadius: 14
+                    )
+                )
+                .frame(width: 28, height: 28)
+
+            // Glass highlight
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.5), Color.clear],
+                        center: UnitPoint(x: 0.3, y: 0.25),
+                        startRadius: 0,
+                        endRadius: 10
+                    )
+                )
+                .frame(width: 28, height: 28)
+
+            // SF Symbol icon
+            Image(systemName: pack.icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
+        }
+        .shadow(color: color.opacity(0.3), radius: 3, y: 2)
+    }
+
+    private func packColor(for packName: String) -> Color {
+        switch packName {
+        case "AI": return Color(red: 0.4, green: 0.6, blue: 1.0)  // Blue
+        case "Pulse": return Color(red: 1.0, green: 0.4, blue: 0.6)  // Pink
+        case "Launchpad": return Color(red: 1.0, green: 0.7, blue: 0.2)  // Orange
+        case "AI Artists": return Color(red: 0.8, green: 0.4, blue: 0.9)  // Purple
+        case "Social": return Color(red: 0.3, green: 0.8, blue: 0.7)  // Teal
+        case "Developer": return Color(red: 0.3, green: 0.7, blue: 0.4)  // Green
+        case "Productivity": return Color(red: 0.9, green: 0.5, blue: 0.2)  // Deep Orange
+        case "Creative": return Color(red: 0.9, green: 0.3, blue: 0.5)  // Magenta
+        default: return Color.blue
+        }
+    }
+
+    // MARK: - Glassy Orb Icon
+
+    @ViewBuilder
+    private func glassyOrbIcon(for template: PortalTemplate) -> some View {
+        let color = colorForURL(template.url)
+
+        ZStack {
+            // Outer glow
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            color.opacity(0.3),
+                            color.opacity(0.1),
+                            Color.clear
+                        ],
+                        center: .center,
+                        startRadius: 8,
+                        endRadius: 18
+                    )
+                )
+                .frame(width: 32, height: 32)
+
+            // Glass orb background
+            Circle()
+                .fill(.ultraThinMaterial)
+                .frame(width: 26, height: 26)
+
+            // Favicon or fallback
+            AsyncImage(url: faviconURL(for: template.url)) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .clipShape(Circle())
+                case .failure, .empty:
+                    ZStack {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [color.opacity(0.6), color.opacity(0.85)],
+                                    center: UnitPoint(x: 0.3, y: 0.25),
+                                    startRadius: 0,
+                                    endRadius: 9
+                                )
+                            )
+                            .frame(width: 18, height: 18)
+                        Text(String(template.name.prefix(1)).uppercased())
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
+                    }
+                @unknown default:
+                    EmptyView()
+                }
+            }
+
+            // Glass highlight
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.4), Color.clear],
+                        center: UnitPoint(x: 0.25, y: 0.2),
+                        startRadius: 0,
+                        endRadius: 10
+                    )
+                )
+                .frame(width: 26, height: 26)
+
+            // Rim light
+            Circle()
+                .stroke(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.4), Color.white.opacity(0.1)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.5
+                )
+                .frame(width: 26, height: 26)
+        }
+        .shadow(color: color.opacity(0.3), radius: 4, y: 2)
+    }
+
     // MARK: - Utilities
 
     private func faviconURL(for urlString: String) -> URL? {

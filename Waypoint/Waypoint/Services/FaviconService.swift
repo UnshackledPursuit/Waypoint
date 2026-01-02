@@ -285,8 +285,14 @@ extension Portal {
         return fallbackColor
     }
 
-    /// Returns a consistent color based on the portal's URL host
+    /// Returns a consistent color based on the portal's URL host or type
     var fallbackColor: Color {
+        // For non-web types, use the app-specific default color
+        if type != .web {
+            return type.defaultColor
+        }
+
+        // For web types, use host-based color
         guard let url = URL(string: self.url),
               let host = url.host else {
             return .blue
