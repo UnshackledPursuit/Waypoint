@@ -658,30 +658,28 @@ struct PortalListView: View {
             List {
                 ForEach(filteredAndSortedPortals) { portal in
                     VStack(alignment: .leading, spacing: 8) {
-                        // Portal row wrapped in Button for reliable tap, with long-press gesture
-                        Button {
-                            // Tap action
-                            if let currentID = microActionsPortalID {
-                                dismissMicroActions(for: currentID)
-                            } else {
-                                openPortal(portal)
-                            }
-                        } label: {
-                            PortalRow(portal: portal)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .simultaneousGesture(
-                            LongPressGesture(minimumDuration: 0.5)
-                                .onEnded { _ in
-                                    // Long press - show micro-actions
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        expandedConstellationPortalID = nil
-                                        microActionsPortalID = portal.id
-                                    }
-                                    scheduleMicroActionsDismiss(for: portal.id)
+                        // Portal row with gesture-based interaction (no Button to avoid conflict)
+                        PortalRow(portal: portal)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                // Tap - open portal or dismiss micro-actions
+                                if let currentID = microActionsPortalID {
+                                    dismissMicroActions(for: currentID)
+                                } else {
+                                    openPortal(portal)
                                 }
-                        )
+                            }
+                            .gesture(
+                                LongPressGesture(minimumDuration: 0.5)
+                                    .onEnded { _ in
+                                        // Long press - show micro-actions
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                            expandedConstellationPortalID = nil
+                                            microActionsPortalID = portal.id
+                                        }
+                                        scheduleMicroActionsDismiss(for: portal.id)
+                                    }
+                            )
 
                         // Micro-actions - NO parent gestures interfere
                         if microActionsPortalID == portal.id {
@@ -713,7 +711,7 @@ struct PortalListView: View {
             .onChange(of: focusRequestPortalID) { _, portalID in
                 guard let portalID else { return }
                 withAnimation(.easeInOut(duration: 0.25)) {
-                    proxy.scrollTo(portalID, anchor: .center)
+                    proxy.scrollTo(portalID, anchor: .top)
                 }
                 // Delay micro actions until scroll animation settles
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
