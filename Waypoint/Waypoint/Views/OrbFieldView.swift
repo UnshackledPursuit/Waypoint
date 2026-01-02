@@ -19,28 +19,81 @@ struct OrbFieldView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let positions = OrbLayoutEngine.positions(
-                count: portals.count,
-                in: proxy.size,
-                layout: layoutMode
-            )
+            let needsScroll = layoutMode == .linear && OrbLayoutEngine.needsScroll(count: portals.count, in: proxy.size)
+            let orientation = OrbLayoutEngine.orientation(for: proxy.size)
 
-            ZStack {
-                if portals.isEmpty {
-                    emptyState
-                } else {
-                    ForEach(Array(portals.enumerated()), id: \.element.id) { index, portal in
+            if portals.isEmpty {
+                emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if needsScroll {
+                // Scrollable linear layout
+                scrollableOrbField(size: proxy.size, orientation: orientation)
+            } else {
+                // Standard positioned layout
+                standardOrbField(size: proxy.size)
+            }
+        }
+        .frame(minHeight: 200)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
+    }
+
+    // MARK: - Standard Orb Field
+
+    @ViewBuilder
+    private func standardOrbField(size: CGSize) -> some View {
+        let positions = OrbLayoutEngine.positions(
+            count: portals.count,
+            in: size,
+            layout: layoutMode
+        )
+
+        ZStack {
+            ForEach(Array(portals.enumerated()), id: \.element.id) { index, portal in
+                PortalOrbView(portal: portal) {
+                    onOpen(portal)
+                }
+                .position(positions[safe: index] ?? .zero)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Scrollable Orb Field (for Linear with many orbs)
+
+    @ViewBuilder
+    private func scrollableOrbField(size: CGSize, orientation: OrbLayoutEngine.Orientation) -> some View {
+        let orbSize: CGFloat = 70
+        let spacing: CGFloat = 10
+
+        if orientation == .horizontal {
+            // Horizontal scroll
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: spacing) {
+                    ForEach(portals) { portal in
                         PortalOrbView(portal: portal) {
                             onOpen(portal)
                         }
-                            .position(positions[safe: index] ?? .zero)
+                        .frame(width: orbSize, height: orbSize)
                     }
                 }
+                .padding(.horizontal, 20)
+                .frame(height: size.height)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            // Vertical scroll
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: spacing) {
+                    ForEach(portals) { portal in
+                        PortalOrbView(portal: portal) {
+                            onOpen(portal)
+                        }
+                        .frame(width: orbSize, height: orbSize)
+                    }
+                }
+                .padding(.vertical, 20)
+                .frame(width: size.width)
+            }
         }
-        .frame(minHeight: 320)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
     }
 
     // MARK: - Empty State

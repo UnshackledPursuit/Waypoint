@@ -38,18 +38,14 @@ struct WaypointApp: App {
 
     var body: some Scene {
         WindowGroup {
-            TabView(selection: $selectedTab) {
-                PortalListView()
-                    .tabItem {
-                        Label("List", systemImage: "list.bullet")
-                    }
-                    .tag(AppTab.list)
-
-                OrbSceneView(sceneState: orbSceneState)
-                    .tabItem {
-                        Label("Orb", systemImage: "sparkles")
-                    }
-                    .tag(AppTab.orb)
+            // Manual view switching (no TabView = no native tab ornament)
+            Group {
+                switch selectedTab {
+                case .list:
+                    PortalListView()
+                case .orb:
+                    OrbSceneView(sceneState: orbSceneState)
+                }
             }
             .environment(portalManager)
             .environment(constellationManager)
@@ -61,7 +57,6 @@ struct WaypointApp: App {
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 if clipboardDetectionEnabled {
-                    // Small delay to ensure clipboard is ready
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         checkClipboardForURL()
                     }
@@ -84,9 +79,15 @@ struct WaypointApp: App {
                 }
             }
 #if os(visionOS)
-            // Bottom ornament: Unified control bar
-            // Quick actions + filters + constellations + launch
-            // Native TabView ornament handles tab switching (has nice hover behavior)
+            // Left ornament: Tab switching + quick actions (Paste/Add)
+            .ornament(visibility: .visible, attachmentAnchor: .scene(.leading), contentAlignment: .trailing) {
+                WaypointLeftOrnament(selectedTab: $selectedTab)
+                    .environment(portalManager)
+                    .environment(navigationState)
+                    .environment(constellationManager)
+                    .padding(.trailing, 24)
+            }
+            // Bottom ornament: Filters, constellations, launch
             .ornament(visibility: .visible, attachmentAnchor: .scene(.bottom), contentAlignment: .top) {
                 WaypointBottomOrnament()
                     .environment(portalManager)
@@ -97,6 +98,9 @@ struct WaypointApp: App {
 #endif
         }
         .defaultSize(width: 400, height: 600)
+        #if os(visionOS)
+        .windowResizability(.contentSize)
+        #endif
     }
 
     // MARK: - Clipboard Detection

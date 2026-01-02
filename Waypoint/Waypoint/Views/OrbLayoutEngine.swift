@@ -19,13 +19,48 @@ enum OrbLayoutEngine {
         case hemisphere = "Hemisphere"
     }
 
+    /// Returns the orientation based on window dimensions
+    enum Orientation {
+        case vertical
+        case horizontal
+    }
+
+    static func orientation(for size: CGSize) -> Orientation {
+        // If width is significantly greater than height (aspect ratio > 1.5), go horizontal
+        return size.width > size.height * 1.3 ? .horizontal : .vertical
+    }
+
+    /// Check if scrolling is needed for linear layout
+    static func needsScroll(count: Int, in size: CGSize, orbSize: CGFloat = 80) -> Bool {
+        let orientation = orientation(for: size)
+        let spacing = orbSize + 10
+        let totalNeeded = CGFloat(count) * spacing
+        if orientation == .vertical {
+            return totalNeeded > size.height
+        } else {
+            return totalNeeded > size.width
+        }
+    }
+
+    /// Calculate content size for scrolling
+    static func contentSize(count: Int, in size: CGSize, orbSize: CGFloat = 80) -> CGSize {
+        let orientation = orientation(for: size)
+        let spacing = orbSize + 10
+        let totalNeeded = CGFloat(count) * spacing + 40 // padding
+        if orientation == .vertical {
+            return CGSize(width: size.width, height: max(totalNeeded, size.height))
+        } else {
+            return CGSize(width: max(totalNeeded, size.width), height: size.height)
+        }
+    }
+
     static func positions(
         count: Int,
         in size: CGSize,
         layout: Layout
     ) -> [CGPoint] {
         guard count > 0 else { return [] }
-        let resolved = resolveLayout(layout, count: count)
+        let resolved = resolveLayout(layout, count: count, in: size)
         switch resolved {
         case .linear:
             return linearPositions(count: count, in: size)
@@ -42,7 +77,7 @@ enum OrbLayoutEngine {
 
     // MARK: - Layout Resolution
 
-    private static func resolveLayout(_ layout: Layout, count: Int) -> Layout {
+    private static func resolveLayout(_ layout: Layout, count: Int, in size: CGSize) -> Layout {
         guard layout == .auto else { return layout }
         switch count {
         case 0...6:
@@ -58,12 +93,26 @@ enum OrbLayoutEngine {
 
     // MARK: - Layout Implementations
 
+    /// Linear layout that auto-adapts to vertical or horizontal based on window dimensions
     private static func linearPositions(count: Int, in size: CGSize) -> [CGPoint] {
-        let spacing = min(90.0, size.height / CGFloat(max(count, 1)) * 0.8)
-        let startY = (size.height - spacing * CGFloat(count - 1)) / 2.0
-        let centerX = size.width / 2.0
-        return (0..<count).map { index in
-            CGPoint(x: centerX, y: startY + spacing * CGFloat(index))
+        let orientation = orientation(for: size)
+
+        if orientation == .horizontal {
+            // Horizontal linear layout
+            let spacing = min(90.0, size.width / CGFloat(max(count, 1)) * 0.8)
+            let startX = (size.width - spacing * CGFloat(count - 1)) / 2.0
+            let centerY = size.height / 2.0
+            return (0..<count).map { index in
+                CGPoint(x: startX + spacing * CGFloat(index), y: centerY)
+            }
+        } else {
+            // Vertical linear layout (default)
+            let spacing = min(90.0, size.height / CGFloat(max(count, 1)) * 0.8)
+            let startY = (size.height - spacing * CGFloat(count - 1)) / 2.0
+            let centerX = size.width / 2.0
+            return (0..<count).map { index in
+                CGPoint(x: centerX, y: startY + spacing * CGFloat(index))
+            }
         }
     }
 
