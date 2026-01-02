@@ -39,6 +39,11 @@ class PortalManager {
         newPortal.sortIndex = 0
         portals.append(newPortal)
         save()
+
+        // Fetch favicon asynchronously (non-blocking)
+        Task {
+            await fetchFavicon(for: newPortal.id)
+        }
     }
 
     func addMultiple(_ newPortals: [Portal]) {
@@ -50,12 +55,21 @@ class PortalManager {
             }
         }
         // Add new portals with consecutive sortIndex starting at 0
+        var addedIDs: [UUID] = []
         for (index, var portal) in newPortals.enumerated() {
             portal.sortIndex = index
             portals.append(portal)
+            addedIDs.append(portal.id)
         }
         save()
         print("✅ Added \(newPortals.count) portals")
+
+        // Fetch favicons asynchronously for all new portals
+        Task {
+            for id in addedIDs {
+                await fetchFavicon(for: id)
+            }
+        }
     }
     
     func update(_ portal: Portal) {
@@ -205,5 +219,38 @@ class PortalManager {
         portals = Portal.samples
         save()
         print("📝 Loaded sample data: \(portals.count) portals")
+    }
+
+    // MARK: - Favicon Fetching
+
+    /// Fetches favicon for a portal and updates its thumbnailData
+    @MainActor
+    func fetchFavicon(for portalID: UUID) async {
+        guard let index = portals.firstIndex(where: { $0.id == portalID }),
+              portals[index].type == .web,
+              portals[index].thumbnailData == nil else {
+            return
+        }
+
+        let urlString = portals[index].url
+
+        if let faviconData = await FaviconService.shared.fetchFavicon(for: urlString) {
+            // Update portal with fetched favicon
+            portals[index].thumbnailData = faviconData
+            save()
+            print("🖼️ Favicon fetched for: \(portals[index].name)")
+        }
+    }
+
+    /// Refreshes favicons for all web portals that don't have one
+    @MainActor
+    func refreshAllFavicons() async {
+        let webPortalsWithoutFavicon = portals.filter { $0.type == .web && $0.thumbnailData == nil }
+
+        for portal in webPortalsWithoutFavicon {
+            await fetchFavicon(for: portal.id)
+        }
+
+        print("🖼️ Refreshed favicons for \(webPortalsWithoutFavicon.count) portals")
     }
 }
