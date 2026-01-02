@@ -18,6 +18,11 @@ struct OrbContainerView: View {
     @ObservedObject var sceneState: OrbSceneState
     @State private var isDropTargeted = false
 
+    // Micro-actions state
+    @State private var portalToEdit: Portal?
+    @State private var showCreateConstellation = false
+    @State private var portalForNewConstellation: Portal?
+
     // MARK: - Body
 
     var body: some View {
@@ -38,6 +43,26 @@ struct OrbContainerView: View {
                         onBack: collapse,
                         onOpen: { portal in
                             openPortal(portal)
+                        },
+                        onEdit: { portal in
+                            portalToEdit = portal
+                        },
+                        onDelete: { portal in
+                            portalManager.delete(portal)
+                        },
+                        onTogglePin: { portal in
+                            portalManager.togglePin(portal)
+                        },
+                        onToggleConstellation: { portal, constellation in
+                            toggleConstellationAssignment(portal: portal, constellation: constellation)
+                        },
+                        allConstellations: constellationManager.constellations,
+                        constellationIDsForPortal: { portal in
+                            constellationIDsForPortal(portal)
+                        },
+                        onCreateConstellation: { portal in
+                            portalForNewConstellation = portal
+                            showCreateConstellation = true
                         }
                     )
                 } else {
@@ -48,6 +73,26 @@ struct OrbContainerView: View {
                         constellationSections: constellationSections,
                         onOpen: { portal in
                             openPortal(portal)
+                        },
+                        onEdit: { portal in
+                            portalToEdit = portal
+                        },
+                        onDelete: { portal in
+                            portalManager.delete(portal)
+                        },
+                        onTogglePin: { portal in
+                            portalManager.togglePin(portal)
+                        },
+                        onToggleConstellation: { portal, constellation in
+                            toggleConstellationAssignment(portal: portal, constellation: constellation)
+                        },
+                        allConstellations: constellationManager.constellations,
+                        constellationIDsForPortal: { portal in
+                            constellationIDsForPortal(portal)
+                        },
+                        onCreateConstellation: { portal in
+                            portalForNewConstellation = portal
+                            showCreateConstellation = true
                         }
                     )
                 }
@@ -86,6 +131,12 @@ struct OrbContainerView: View {
             if case .constellation = newValue, sceneState.isExpanded == false {
                 expand()
             }
+        }
+        .sheet(item: $portalToEdit) { portal in
+            AddPortalView(editingPortal: portal)
+        }
+        .sheet(isPresented: $showCreateConstellation) {
+            CreateConstellationView(initialPortal: portalForNewConstellation)
         }
     }
 
@@ -331,6 +382,20 @@ struct OrbContainerView: View {
 
     private func existingPortal(for url: URL) -> Portal? {
         portalManager.portals.first { URLNormalizer.matches($0.url, url.absoluteString) }
+    }
+
+    // MARK: - Micro-Actions Helpers
+
+    private func constellationIDsForPortal(_ portal: Portal) -> Set<UUID> {
+        Set(constellationManager.constellations.filter { $0.portalIDs.contains(portal.id) }.map { $0.id })
+    }
+
+    private func toggleConstellationAssignment(portal: Portal, constellation: Constellation) {
+        if constellation.portalIDs.contains(portal.id) {
+            constellationManager.removePortal(portal.id, from: constellation)
+        } else {
+            constellationManager.addPortal(portal.id, to: constellation)
+        }
     }
 
     private func addPortalToSelectedConstellation(_ portalID: UUID) {

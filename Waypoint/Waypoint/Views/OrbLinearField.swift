@@ -49,6 +49,16 @@ struct OrbLinearField: View {
     var constellationSections: [ConstellationSection]? = nil
     let onOpen: (Portal) -> Void
 
+    // MARK: - Micro-Action Callbacks
+
+    var onEdit: ((Portal) -> Void)? = nil
+    var onDelete: ((Portal) -> Void)? = nil
+    var onTogglePin: ((Portal) -> Void)? = nil
+    var onToggleConstellation: ((Portal, Constellation) -> Void)? = nil
+    var allConstellations: [Constellation] = []
+    var constellationIDsForPortal: ((Portal) -> Set<UUID>)? = nil
+    var onCreateConstellation: ((Portal) -> Void)? = nil
+
     // MARK: - Layout Constants
 
     /// Size of each orb (the PortalOrbView has internal padding for glow)
@@ -72,6 +82,29 @@ struct OrbLinearField: View {
 
     private var isConstellationColorMode: Bool {
         OrbColorMode(rawValue: orbColorModeRaw) == .constellation
+    }
+
+    // MARK: - Helper: Create Portal Orb View
+
+    @ViewBuilder
+    private func makePortalOrbView(portal: Portal, colorOverride: Color? = nil) -> some View {
+        let portalColor = colorOverride ?? constellationColorForPortal?(portal) ?? constellationColor
+
+        PortalOrbView(
+            portal: portal,
+            constellationColor: portalColor,
+            size: orbSize,
+            onOpen: { onOpen(portal) },
+            onEdit: onEdit != nil ? { onEdit?(portal) } : nil,
+            onDelete: onDelete != nil ? { onDelete?(portal) } : nil,
+            onTogglePin: onTogglePin != nil ? { onTogglePin?(portal) } : nil,
+            onToggleConstellation: onToggleConstellation != nil ? { constellation in
+                onToggleConstellation?(portal, constellation)
+            } : nil,
+            constellations: allConstellations,
+            portalConstellationIDs: constellationIDsForPortal?(portal) ?? [],
+            onCreateConstellation: onCreateConstellation != nil ? { onCreateConstellation?(portal) } : nil
+        )
     }
 
     // MARK: - Body
@@ -157,7 +190,14 @@ struct OrbLinearField: View {
                         orbSize: orbSize,
                         orbSpacing: orbSpacing,
                         contentPadding: padding,
-                        onOpen: onOpen
+                        onOpen: onOpen,
+                        onEdit: onEdit,
+                        onDelete: onDelete,
+                        onTogglePin: onTogglePin,
+                        onToggleConstellation: onToggleConstellation,
+                        allConstellations: allConstellations,
+                        constellationIDsForPortal: constellationIDsForPortal,
+                        onCreateConstellation: onCreateConstellation
                     )
                     .frame(height: rowHeight)
                 }
@@ -182,7 +222,14 @@ struct OrbLinearField: View {
                         orbSize: orbSize,
                         orbSpacing: orbSpacing,
                         contentPadding: padding,
-                        onOpen: onOpen
+                        onOpen: onOpen,
+                        onEdit: onEdit,
+                        onDelete: onDelete,
+                        onTogglePin: onTogglePin,
+                        onToggleConstellation: onToggleConstellation,
+                        allConstellations: allConstellations,
+                        constellationIDsForPortal: constellationIDsForPortal,
+                        onCreateConstellation: onCreateConstellation
                     )
                     .frame(width: columnWidth)
                 }
@@ -227,11 +274,9 @@ struct OrbLinearField: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: orbSpacing) {
                         ForEach(section.portals) { portal in
-                            PortalOrbView(
+                            makePortalOrbView(
                                 portal: portal,
-                                constellationColor: isConstellationColorMode ? section.color : constellationColorForPortal?(portal),
-                                size: orbSize,
-                                onOpen: { onOpen(portal) }
+                                colorOverride: isConstellationColorMode ? section.color : nil
                             )
                         }
                     }
@@ -245,11 +290,9 @@ struct OrbLinearField: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: orbSpacing) {
                         ForEach(section.portals) { portal in
-                            PortalOrbView(
+                            makePortalOrbView(
                                 portal: portal,
-                                constellationColor: isConstellationColorMode ? section.color : constellationColorForPortal?(portal),
-                                size: orbSize,
-                                onOpen: { onOpen(portal) }
+                                colorOverride: isConstellationColorMode ? section.color : nil
                             )
                         }
                     }
@@ -313,6 +356,15 @@ private struct ScrollableOrbRow: View {
     let contentPadding: CGFloat
     let onOpen: (Portal) -> Void
 
+    // Micro-action callbacks
+    var onEdit: ((Portal) -> Void)? = nil
+    var onDelete: ((Portal) -> Void)? = nil
+    var onTogglePin: ((Portal) -> Void)? = nil
+    var onToggleConstellation: ((Portal, Constellation) -> Void)? = nil
+    var allConstellations: [Constellation] = []
+    var constellationIDsForPortal: ((Portal) -> Set<UUID>)? = nil
+    var onCreateConstellation: ((Portal) -> Void)? = nil
+
     @State private var canScrollLeft = false
     @State private var canScrollRight = false
 
@@ -334,7 +386,16 @@ private struct ScrollableOrbRow: View {
                                 portal: portal,
                                 constellationColor: colorForPortal(portal),
                                 size: orbSize,
-                                onOpen: { onOpen(portal) }
+                                onOpen: { onOpen(portal) },
+                                onEdit: onEdit != nil ? { onEdit?(portal) } : nil,
+                                onDelete: onDelete != nil ? { onDelete?(portal) } : nil,
+                                onTogglePin: onTogglePin != nil ? { onTogglePin?(portal) } : nil,
+                                onToggleConstellation: onToggleConstellation != nil ? { constellation in
+                                    onToggleConstellation?(portal, constellation)
+                                } : nil,
+                                constellations: allConstellations,
+                                portalConstellationIDs: constellationIDsForPortal?(portal) ?? [],
+                                onCreateConstellation: onCreateConstellation != nil ? { onCreateConstellation?(portal) } : nil
                             )
                         }
                     }
@@ -436,6 +497,15 @@ private struct ScrollableOrbColumn: View {
     let contentPadding: CGFloat
     let onOpen: (Portal) -> Void
 
+    // Micro-action callbacks
+    var onEdit: ((Portal) -> Void)? = nil
+    var onDelete: ((Portal) -> Void)? = nil
+    var onTogglePin: ((Portal) -> Void)? = nil
+    var onToggleConstellation: ((Portal, Constellation) -> Void)? = nil
+    var allConstellations: [Constellation] = []
+    var constellationIDsForPortal: ((Portal) -> Set<UUID>)? = nil
+    var onCreateConstellation: ((Portal) -> Void)? = nil
+
     @State private var canScrollUp = false
     @State private var canScrollDown = false
 
@@ -457,7 +527,16 @@ private struct ScrollableOrbColumn: View {
                                 portal: portal,
                                 constellationColor: colorForPortal(portal),
                                 size: orbSize,
-                                onOpen: { onOpen(portal) }
+                                onOpen: { onOpen(portal) },
+                                onEdit: onEdit != nil ? { onEdit?(portal) } : nil,
+                                onDelete: onDelete != nil ? { onDelete?(portal) } : nil,
+                                onTogglePin: onTogglePin != nil ? { onTogglePin?(portal) } : nil,
+                                onToggleConstellation: onToggleConstellation != nil ? { constellation in
+                                    onToggleConstellation?(portal, constellation)
+                                } : nil,
+                                constellations: allConstellations,
+                                portalConstellationIDs: constellationIDsForPortal?(portal) ?? [],
+                                onCreateConstellation: onCreateConstellation != nil ? { onCreateConstellation?(portal) } : nil
                             )
                         }
                     }

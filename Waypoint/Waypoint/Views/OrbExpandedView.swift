@@ -23,6 +23,15 @@ struct OrbExpandedView: View {
     let onBack: () -> Void
     let onOpen: (Portal) -> Void
 
+    // Micro-action callbacks (passed through to OrbLinearField)
+    var onEdit: ((Portal) -> Void)? = nil
+    var onDelete: ((Portal) -> Void)? = nil
+    var onTogglePin: ((Portal) -> Void)? = nil
+    var onToggleConstellation: ((Portal, Constellation) -> Void)? = nil
+    var allConstellations: [Constellation] = []
+    var constellationIDsForPortal: ((Portal) -> Set<UUID>)? = nil
+    var onCreateConstellation: ((Portal) -> Void)? = nil
+
     // MARK: - Body
 
     var body: some View {
@@ -41,7 +50,14 @@ struct OrbExpandedView: View {
                 constellationColor: constellationColor,
                 constellationColorForPortal: constellationColorForPortal,
                 constellationSections: constellationSections,
-                onOpen: onOpen
+                onOpen: onOpen,
+                onEdit: onEdit,
+                onDelete: onDelete,
+                onTogglePin: onTogglePin,
+                onToggleConstellation: onToggleConstellation,
+                allConstellations: allConstellations,
+                constellationIDsForPortal: constellationIDsForPortal,
+                onCreateConstellation: onCreateConstellation
             )
         }
     }
