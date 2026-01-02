@@ -71,6 +71,45 @@
 
 ---
 
+## Step 3.5 — UI Polish & Micro-Actions Refinement ✅ Completed
+
+**EditConstellationView improvements:**
+- Larger hero orb (56px → 80px) with enhanced glass effects
+- 4-layer gradient with ambient glow, specular highlight, rim light
+- Constellation picker with beautiful glass orbs and drag-to-reorder
+- Header with "Constellations" title and "Drag to Reorder" hint
+- Centered color selection with glass orb buttons
+
+**PortalListView micro-actions fixes:**
+- Fixed long-press gesture (was conflicting with List's drag-to-reorder)
+- Orbital picker stays open when toggling constellations
+- Auto-dismiss pauses while orbital picker is expanded
+- Vibrant orb colors with colored shadows
+- Context menu only shows Edit option (removed Delete from orbital picker)
+- Duplicates now scroll to top (anchor: .top)
+
+**Status:** Completed. Long-press → micro-actions works reliably.
+
+---
+
+## Known Issue: Custom Sort (Drag-to-Reorder) Disabled ⚠️
+
+**Problem:** List's `.onMove` and `.editMode` use long-press internally for drag-to-reorder, which conflicts with our custom long-press → micro-actions gesture.
+
+**Current state:** Disabled in PortalListView.swift (commented out):
+- `.onMove { ... }`
+- `.environment(\.editMode, $editMode)`
+- Related onChange/onAppear handlers
+
+**To fix (future):**
+1. **Option A:** Add dedicated drag handles on each row (long-press row = micro-actions, drag handle = reorder)
+2. **Option B:** Add explicit "Reorder Mode" toggle button that switches gesture behavior
+3. **Option C:** Use context menu for micro-actions instead of long-press (frees long-press for reorder)
+
+**Recommendation:** Option A (drag handles) provides best UX - both gestures work simultaneously.
+
+---
+
 ## Step 4 — Wormhole Swap (Linear layout only)
 Implement the constellation switch animation in Linear mode:
 - bottom portal swallow old
