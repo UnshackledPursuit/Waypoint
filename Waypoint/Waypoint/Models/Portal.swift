@@ -51,22 +51,30 @@ struct Portal: Identifiable, Codable, Hashable {
     var url: String
     var type: PortalType
     var thumbnailData: Data?        // Auto-fetched favicon
-    var customThumbnail: Data?      // User override
-    var useCustomThumbnail: Bool
+    var customThumbnail: Data?      // User override image
+    var customColorHex: String?     // Custom fallback color (hex)
+    var customInitials: String?     // Custom initials (1-3 chars)
+    var useCustomThumbnail: Bool    // Use custom image instead of auto
+    var useCustomStyle: Bool        // Use custom color/initials instead of auto
     var dateAdded: Date
     var lastOpened: Date?
     var isFavorite: Bool
     var isPinned: Bool              // Pin to top of list
     var sortIndex: Int              // For manual ordering
     var tags: [String]              // For future organization
-    
+
     // Computed property for display
     var displayThumbnail: Data? {
         useCustomThumbnail ? customThumbnail : thumbnailData
     }
+
+    /// Returns true if this portal has any custom styling (image, color, or initials)
+    var hasCustomStyling: Bool {
+        useCustomThumbnail || useCustomStyle
+    }
     
     // MARK: - Initialization
-    
+
     init(
         id: UUID = UUID(),
         name: String,
@@ -74,7 +82,10 @@ struct Portal: Identifiable, Codable, Hashable {
         type: PortalType? = nil,
         thumbnailData: Data? = nil,
         customThumbnail: Data? = nil,
+        customColorHex: String? = nil,
+        customInitials: String? = nil,
         useCustomThumbnail: Bool = false,
+        useCustomStyle: Bool = false,
         dateAdded: Date = Date(),
         lastOpened: Date? = nil,
         isFavorite: Bool = false,
@@ -97,7 +108,10 @@ struct Portal: Identifiable, Codable, Hashable {
 
         self.thumbnailData = thumbnailData
         self.customThumbnail = customThumbnail
+        self.customColorHex = customColorHex
+        self.customInitials = customInitials
         self.useCustomThumbnail = useCustomThumbnail
+        self.useCustomStyle = useCustomStyle
         self.dateAdded = dateAdded
         self.lastOpened = lastOpened
         self.isFavorite = isFavorite

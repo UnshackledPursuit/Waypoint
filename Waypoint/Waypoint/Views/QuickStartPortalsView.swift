@@ -54,26 +54,44 @@ struct QuickStartPortalsView: View {
                                         toggleSelection(template.id)
                                     } label: {
                                         HStack(spacing: 10) {
-                                            // Styled initial avatar with host-based color
-                                            ZStack {
-                                                Circle()
-                                                    .fill(
-                                                        RadialGradient(
-                                                            colors: [
-                                                                colorForURL(template.url).opacity(0.9),
-                                                                colorForURL(template.url).opacity(0.6)
-                                                            ],
-                                                            center: .topLeading,
-                                                            startRadius: 0,
-                                                            endRadius: 20
-                                                        )
-                                                    )
-                                                    .frame(width: 28, height: 28)
-                                                    .shadow(color: colorForURL(template.url).opacity(0.4), radius: 3, y: 1)
+                                            // Checkbox on LEFT
+                                            Image(systemName: selectedPortals.contains(template.id) ? "checkmark.circle.fill" : "circle")
+                                                .foregroundStyle(selectedPortals.contains(template.id) ? .green : .secondary)
+                                                .font(.system(size: 20))
 
-                                                Text(String(template.name.prefix(1)).uppercased())
-                                                    .font(.system(size: 13, weight: .semibold))
-                                                    .foregroundStyle(.white)
+                                            // Favicon from DuckDuckGo or fallback
+                                            AsyncImage(url: faviconURL(for: template.url)) { phase in
+                                                switch phase {
+                                                case .success(let image):
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFit()
+                                                        .frame(width: 24, height: 24)
+                                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                                case .failure, .empty:
+                                                    // Fallback to colored initial
+                                                    ZStack {
+                                                        Circle()
+                                                            .fill(
+                                                                RadialGradient(
+                                                                    colors: [
+                                                                        colorForURL(template.url).opacity(0.95),
+                                                                        colorForURL(template.url).opacity(0.7)
+                                                                    ],
+                                                                    center: .topLeading,
+                                                                    startRadius: 0,
+                                                                    endRadius: 15
+                                                                )
+                                                            )
+                                                            .frame(width: 24, height: 24)
+
+                                                        Text(String(template.name.prefix(1)).uppercased())
+                                                            .font(.system(size: 12, weight: .bold))
+                                                            .foregroundStyle(.white)
+                                                    }
+                                                @unknown default:
+                                                    EmptyView()
+                                                }
                                             }
 
                                             Text(template.name)
@@ -81,10 +99,6 @@ struct QuickStartPortalsView: View {
                                                 .foregroundStyle(.primary)
 
                                             Spacer()
-
-                                            Image(systemName: selectedPortals.contains(template.id) ? "checkmark.circle.fill" : "circle")
-                                                .foregroundStyle(selectedPortals.contains(template.id) ? .blue : .secondary)
-                                                .font(.system(size: 18))
                                         }
                                     }
                                     .buttonStyle(.plain)
@@ -203,6 +217,14 @@ struct QuickStartPortalsView: View {
     }
     
     // MARK: - Utilities
+
+    private func faviconURL(for urlString: String) -> URL? {
+        guard let url = URL(string: urlString),
+              let host = url.host else {
+            return nil
+        }
+        return URL(string: "https://icons.duckduckgo.com/ip3/\(host).ico")
+    }
 
     private func colorForURL(_ urlString: String) -> Color {
         guard let url = URL(string: urlString),

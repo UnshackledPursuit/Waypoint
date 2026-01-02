@@ -275,6 +275,16 @@ extension Portal {
         return await FaviconService.shared.extractDominantColor(from: thumbnailData)
     }
 
+    /// Returns the display color - custom if set, otherwise auto-generated from host
+    var displayColor: Color {
+        // Use custom color if enabled and set
+        if useCustomStyle, let hexColor = customColorHex {
+            return Color(hex: hexColor)
+        }
+        // Otherwise auto-generate from URL host
+        return fallbackColor
+    }
+
     /// Returns a consistent color based on the portal's URL host
     var fallbackColor: Color {
         guard let url = URL(string: self.url),
@@ -282,6 +292,16 @@ extension Portal {
             return .blue
         }
         return Color.fromHost(host)
+    }
+
+    /// Returns the display initials - custom if set, otherwise first letter of name
+    var displayInitials: String {
+        // Use custom initials if enabled and set
+        if useCustomStyle, let initials = customInitials, !initials.isEmpty {
+            return String(initials.prefix(3)).uppercased()
+        }
+        // Otherwise use first letter
+        return avatarInitial
     }
 
     /// Returns the first letter of the name for avatar display

@@ -22,7 +22,26 @@ struct AddPortalView: View {
     @State private var name: String = ""
     @State private var url: String = ""
     @State private var isPinned: Bool = false
-    
+
+    // Custom styling state
+    @State private var useCustomStyle: Bool = false
+    @State private var customColorHex: String = "#3B82F6"  // Default blue
+    @State private var customInitials: String = ""
+
+    // Predefined colors for picker
+    private let colorOptions: [(name: String, hex: String)] = [
+        ("Red", "#F44336"),
+        ("Pink", "#E91E63"),
+        ("Purple", "#9C27B0"),
+        ("Indigo", "#3F51B5"),
+        ("Blue", "#2196F3"),
+        ("Cyan", "#00BCD4"),
+        ("Teal", "#009688"),
+        ("Green", "#4CAF50"),
+        ("Orange", "#FF9800"),
+        ("Deep Orange", "#FF5722"),
+    ]
+
     private var isEditing: Bool {
         editingPortal != nil
     }
@@ -48,6 +67,9 @@ struct AddPortalView: View {
             _name = State(initialValue: portal.name)
             _url = State(initialValue: portal.url)
             _isPinned = State(initialValue: portal.isPinned)
+            _useCustomStyle = State(initialValue: portal.useCustomStyle)
+            _customColorHex = State(initialValue: portal.customColorHex ?? "#3B82F6")
+            _customInitials = State(initialValue: portal.customInitials ?? "")
         }
     }
     
@@ -110,6 +132,58 @@ struct AddPortalView: View {
                 }
             }
 
+            // Custom avatar section (only in edit mode)
+            if isEditing {
+                Section("Custom Avatar") {
+                    Toggle("Use Custom Style", isOn: $useCustomStyle)
+
+                    if useCustomStyle {
+                        // Initials field
+                        HStack {
+                            Text("Initials")
+                            Spacer()
+                            TextField("1-3 chars", text: $customInitials)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 80)
+                                .onChange(of: customInitials) { _, newValue in
+                                    // Limit to 3 characters
+                                    if newValue.count > 3 {
+                                        customInitials = String(newValue.prefix(3))
+                                    }
+                                }
+                        }
+
+                        // Color picker
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Color")
+                                .font(.subheadline)
+
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 10) {
+                                ForEach(colorOptions, id: \.hex) { option in
+                                    Button {
+                                        customColorHex = option.hex
+                                    } label: {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color(hex: option.hex))
+                                                .frame(width: 36, height: 36)
+
+                                            if customColorHex == option.hex {
+                                                Circle()
+                                                    .strokeBorder(.white, lineWidth: 3)
+                                                    .frame(width: 36, height: 36)
+                                            }
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+
             // Only show preview for new portals (edit mode has hero)
             if !isEditing {
                 Section("Preview") {
@@ -169,30 +243,38 @@ struct AddPortalView: View {
 
     private var portalHeroPreview: some View {
         VStack(spacing: 8) {
-            // Thumbnail or letter avatar
+            // Thumbnail or vibrant colored avatar
             ZStack {
-                if let portal = editingPortal,
+                if !useCustomStyle,
+                   let portal = editingPortal,
                    let thumbnailData = portal.displayThumbnail,
                    let uiImage = UIImage(data: thumbnailData) {
+                    // Show actual favicon if not using custom style
                     Image(uiImage: uiImage)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 56, height: 56)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 } else {
+                    // Vibrant colored fallback (uses custom color if enabled)
                     Circle()
-                        .fill(.ultraThinMaterial)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    heroDisplayColor.opacity(0.95),
+                                    heroDisplayColor.opacity(0.7)
+                                ],
+                                center: .topLeading,
+                                startRadius: 0,
+                                endRadius: 35
+                            )
+                        )
                         .frame(width: 56, height: 56)
+                        .shadow(color: heroDisplayColor.opacity(0.5), radius: 6, y: 3)
 
-                    if !name.isEmpty {
-                        Text(name.prefix(1).uppercased())
-                            .font(.title)
-                            .fontWeight(.semibold)
-                    } else {
-                        Image(systemName: "link.circle")
-                            .font(.title)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(heroDisplayInitials)
+                        .font(.system(size: heroDisplayInitials.count > 1 ? 20 : 26, weight: .bold))
+                        .foregroundStyle(.white)
                 }
             }
 
@@ -206,43 +288,80 @@ struct AddPortalView: View {
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
+    }
+
+    /// Computed fallback color based on current URL
+    private var currentFallbackColor: Color {
+        guard !url.isEmpty,
+              let urlObj = URL(string: url) ?? URL(string: "https://" + url),
+              let host = urlObj.host else {
+            return .blue
+        }
+        return Color.fromHost(host)
+    }
+
+    /// Display color for hero - uses custom if enabled, otherwise auto
+    private var heroDisplayColor: Color {
+        if useCustomStyle {
+            return Color(hex: customColorHex)
+        }
+        return currentFallbackColor
+    }
+
+    /// Display initials for hero - uses custom if enabled, otherwise first letter of name
+    private var heroDisplayInitials: String {
+        if useCustomStyle && !customInitials.isEmpty {
+            return String(customInitials.prefix(3)).uppercased()
+        }
+        return name.isEmpty ? "?" : String(name.prefix(1)).uppercased()
     }
 
     // MARK: - Preview
 
     private var portalPreview: some View {
         HStack(spacing: 12) {
-            // Placeholder thumbnail
+            // Vibrant colored thumbnail preview
             ZStack {
                 Circle()
-                    .fill(.ultraThinMaterial)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                currentFallbackColor.opacity(0.95),
+                                currentFallbackColor.opacity(0.7)
+                            ],
+                            center: .topLeading,
+                            startRadius: 0,
+                            endRadius: 25
+                        )
+                    )
                     .frame(width: 40, height: 40)
-                
+                    .shadow(color: currentFallbackColor.opacity(0.4), radius: 4, y: 2)
+
                 if !name.isEmpty {
                     Text(name.prefix(1).uppercased())
-                        .font(.title3)
-                        .fontWeight(.semibold)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white)
                 } else {
                     Image(systemName: "link.circle")
                         .font(.title3)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.8))
                 }
             }
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(name.isEmpty ? "Portal Name" : name)
                     .font(.headline)
                     .foregroundStyle(name.isEmpty ? .secondary : .primary)
-                
+
                 Text(url.isEmpty ? "portal-url.com" : cleanURL(url))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            
+
             Spacer()
-            
+
             if isPinned {
                 Image(systemName: "pin.fill")
                     .foregroundStyle(.blue)
@@ -307,7 +426,12 @@ struct AddPortalView: View {
             updatedPortal.name = cleanedName
             updatedPortal.url = cleanedURL
             updatedPortal.isPinned = isPinned
-            
+
+            // Update custom styling
+            updatedPortal.useCustomStyle = useCustomStyle
+            updatedPortal.customColorHex = useCustomStyle ? customColorHex : nil
+            updatedPortal.customInitials = useCustomStyle && !customInitials.isEmpty ? customInitials : nil
+
             portalManager.update(updatedPortal)
             dismissMicroActionsPortalID?.wrappedValue = updatedPortal.id
             print("✏️ Updated portal: \(cleanedName)")

@@ -1224,14 +1224,25 @@ struct PortalRow: View {
                 .resizable()
                 .scaledToFit()
         } else {
-            // Placeholder with first letter
+            // Vibrant colored fallback with initials
             ZStack {
                 Circle()
-                    .fill(.ultraThinMaterial)
-                
-                Text(portal.name.prefix(1).uppercased())
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                portal.displayColor.opacity(0.95),
+                                portal.displayColor.opacity(0.7)
+                            ],
+                            center: .topLeading,
+                            startRadius: 0,
+                            endRadius: 25
+                        )
+                    )
+                    .shadow(color: portal.displayColor.opacity(0.4), radius: 4, y: 2)
+
+                Text(portal.displayInitials)
+                    .font(.system(size: portal.displayInitials.count > 1 ? 14 : 18, weight: .bold))
+                    .foregroundStyle(.white)
             }
         }
     }
@@ -1272,16 +1283,28 @@ private struct QuickAddPortalView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    HStack {
-                        TextField("URL", text: $urlText)
-                            .textContentType(.URL)
-                            .autocapitalization(.none)
-                            .autocorrectionDisabled()
+            VStack(spacing: 16) {
+                TextField("Enter URL or site name...", text: $urlText)
+                    .textFieldStyle(.roundedBorder)
+                    .textContentType(.URL)
+                    .autocapitalization(.none)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal)
+                    .onSubmit {
+                        if !urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            onSubmit(urlText)
+                            dismiss()
+                        }
                     }
-                }
+
+                Text("Enter a URL like \"youtube.com\" or \"https://github.com\"")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+
+                Spacer()
             }
+            .padding(.top, 16)
             .navigationTitle("Quick Add")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1300,5 +1323,7 @@ private struct QuickAddPortalView: View {
                 }
             }
         }
+        .presentationDetents([.height(180)])
+        .presentationDragIndicator(.visible)
     }
 }
