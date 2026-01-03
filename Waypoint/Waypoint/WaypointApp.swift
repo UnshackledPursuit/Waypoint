@@ -34,17 +34,32 @@ struct WaypointApp: App {
     // User preferences
     @AppStorage("clipboardDetectionEnabled") private var clipboardDetectionEnabled = true
 
+    // Window size tracking for adaptive layout
+    @State private var windowWidth: CGFloat = 400
+
+    /// Threshold below which ornaments are hidden to save space
+    private let narrowOrnamentThreshold: CGFloat = 250
+
     // MARK: - Scene
 
     var body: some Scene {
         WindowGroup {
             // Manual view switching (no TabView = no native tab ornament)
-            Group {
-                switch selectedTab {
-                case .list:
-                    PortalListView()
-                case .orb:
-                    OrbSceneView(sceneState: orbSceneState)
+            GeometryReader { geometry in
+                Group {
+                    switch selectedTab {
+                    case .list:
+                        PortalListView()
+                    case .orb:
+                        OrbSceneView(sceneState: orbSceneState)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: geometry.size.width) { _, newWidth in
+                    windowWidth = newWidth
+                }
+                .onAppear {
+                    windowWidth = geometry.size.width
                 }
             }
             .environment(portalManager)
@@ -80,9 +95,9 @@ struct WaypointApp: App {
             }
 #if os(visionOS)
             // Left ornament: Tab switching + quick actions (Paste/Add)
-            // Only show after first constellation is created
+            // Hidden when window is too narrow or no constellations yet
             .ornament(
-                visibility: constellationManager.constellations.count >= 1 ? .visible : .hidden,
+                visibility: (constellationManager.constellations.count >= 1 && windowWidth >= narrowOrnamentThreshold) ? .visible : .hidden,
                 attachmentAnchor: .scene(.leading),
                 contentAlignment: .trailing
             ) {
@@ -93,9 +108,9 @@ struct WaypointApp: App {
                     .padding(.trailing, 24)
             }
             // Bottom ornament: Filters, constellations, launch
-            // Only show after first portal is created
+            // Hidden when window is too narrow or no portals yet
             .ornament(
-                visibility: portalManager.portals.count >= 1 ? .visible : .hidden,
+                visibility: (portalManager.portals.count >= 1 && windowWidth >= narrowOrnamentThreshold) ? .visible : .hidden,
                 attachmentAnchor: .scene(.bottom),
                 contentAlignment: .top
             ) {
@@ -107,7 +122,7 @@ struct WaypointApp: App {
             }
 #endif
         }
-        .defaultSize(width: 400, height: 600)
+        .defaultSize(width: 360, height: 500)
         #if os(visionOS)
         .windowResizability(.contentSize)
         #endif

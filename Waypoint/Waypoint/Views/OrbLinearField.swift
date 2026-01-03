@@ -122,11 +122,22 @@ struct OrbLinearField: View {
         GeometryReader { proxy in
             let isLandscape = proxy.size.width > proxy.size.height * 1.3
             let isNarrow = proxy.size.width < 200
-            let effectivePadding = isNarrow ? 12.0 : contentPadding
+            let isVeryNarrow = proxy.size.width < 150
+            let isStripMode = isVeryNarrow || proxy.size.height < 150
+
+            // Adaptive padding: aggressive reduction at narrow widths
+            let effectivePadding: CGFloat = {
+                if isVeryNarrow { return 6 }
+                if isNarrow { return 10 }
+                return contentPadding
+            }()
 
             Group {
                 if portals.isEmpty {
                     emptyState
+                } else if isStripMode {
+                    // Strip mode: single scrollable line for very narrow windows
+                    stripLayout(containerSize: proxy.size, isVertical: !isLandscape, padding: effectivePadding)
                 } else if let sections = constellationSections, !sections.isEmpty {
                     // Sectioned layout for constellation grouping
                     sectionedLayout(containerSize: proxy.size, sections: sections, isLandscape: isLandscape, padding: effectivePadding)
@@ -141,9 +152,9 @@ struct OrbLinearField: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: isNarrow ? 16 : 24))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: isVeryNarrow ? 12 : (isNarrow ? 16 : 24)))
         }
-        .frame(minHeight: 150) // Reduced minimum height for compact views
+        .frame(minHeight: 80) // Further reduced minimum for strip mode
     }
 
     // MARK: - Grid Calculation
@@ -245,6 +256,67 @@ struct OrbLinearField: View {
             }
         }
         .padding(.horizontal, padding)
+    }
+
+    // MARK: - Strip Layout (Very Narrow Mode)
+
+    /// Single scrollable line of orbs for very narrow windows
+    /// Uses smallest orb size and minimal spacing
+    private func stripLayout(containerSize: CGSize, isVertical: Bool, padding: CGFloat) -> some View {
+        let stripOrbSize: CGFloat = 35 // Force small size for strip mode
+        let stripSpacing: CGFloat = 8
+
+        return Group {
+            if isVertical {
+                // Vertical strip: single column, scroll vertically
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: stripSpacing) {
+                        ForEach(portals) { portal in
+                            stripOrbView(portal: portal, size: stripOrbSize)
+                        }
+                    }
+                    .padding(.vertical, padding)
+                }
+            } else {
+                // Horizontal strip: single row, scroll horizontally
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: stripSpacing) {
+                        ForEach(portals) { portal in
+                            stripOrbView(portal: portal, size: stripOrbSize)
+                        }
+                    }
+                    .padding(.horizontal, padding)
+                }
+            }
+        }
+    }
+
+    /// Compact orb view for strip mode - icon only, no label
+    @ViewBuilder
+    private func stripOrbView(portal: Portal, size: CGFloat) -> some View {
+        let portalColor = constellationColorForPortal?(portal) ?? constellationColor
+
+        Button {
+            onOpen(portal)
+        } label: {
+            PortalOrbView(
+                portal: portal,
+                constellationColor: portalColor,
+                size: size,
+                showLabel: false, // Hide label in strip mode
+                onOpen: { onOpen(portal) },
+                onEdit: onEdit != nil ? { onEdit?(portal) } : nil,
+                onDelete: onDelete != nil ? { onDelete?(portal) } : nil,
+                onTogglePin: onTogglePin != nil ? { onTogglePin?(portal) } : nil,
+                onToggleConstellation: onToggleConstellation != nil ? { constellation in
+                    onToggleConstellation?(portal, constellation)
+                } : nil,
+                constellations: allConstellations,
+                portalConstellationIDs: constellationIDsForPortal?(portal) ?? [],
+                onCreateConstellation: onCreateConstellation != nil ? { onCreateConstellation?(portal) } : nil
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Sectioned Layout (Constellation Groups)

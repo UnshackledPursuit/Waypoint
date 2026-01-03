@@ -574,7 +574,17 @@ struct PortalListView: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    if layout.columns == 1 {
+                    if layout.isIconOnly {
+                        // Icon-only "smush" mode - vertical strip of orbs
+                        LazyVStack(spacing: 6) {
+                            ForEach(filteredAndSortedPortals) { portal in
+                                portalIconOnlyItem(portal: portal)
+                                    .id(portal.id)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 8)
+                    } else if layout.columns == 1 {
                         // Single column - vertical list style
                         LazyVStack(spacing: 2) {
                             ForEach(filteredAndSortedPortals) { portal in
@@ -621,23 +631,30 @@ struct PortalListView: View {
     private struct ListLayout {
         let columns: Int
         let isCompact: Bool
+        /// Icon-only "smush" mode for very narrow windows
+        let isIconOnly: Bool
     }
 
     private func calculateListLayout(size: CGSize) -> ListLayout {
         let width = size.width
 
+        // Icon-only mode for very narrow windows (smush mode)
+        if width < 180 {
+            return ListLayout(columns: 1, isCompact: true, isIconOnly: true)
+        }
+
         // Flexible 1-4 columns based on width
         // Each column needs ~220pt minimum for comfortable reading
         if width > 880 {
-            return ListLayout(columns: 4, isCompact: false)
+            return ListLayout(columns: 4, isCompact: false, isIconOnly: false)
         } else if width > 660 {
-            return ListLayout(columns: 3, isCompact: false)
+            return ListLayout(columns: 3, isCompact: false, isIconOnly: false)
         } else if width > 440 {
-            return ListLayout(columns: 2, isCompact: false)
+            return ListLayout(columns: 2, isCompact: false, isIconOnly: false)
         }
 
         // Single column for narrow views
-        return ListLayout(columns: 1, isCompact: width < 350)
+        return ListLayout(columns: 1, isCompact: width < 350, isIconOnly: false)
     }
 
     // MARK: - Single Column List Item
@@ -718,7 +735,67 @@ struct PortalListView: View {
         #endif
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
     }
-    
+
+    // MARK: - Icon-Only Item (Smush Mode)
+
+    /// Compact icon-only item for very narrow windows
+    /// Shows just the orb with minimal chrome, tap to open, long-press for actions
+    @ViewBuilder
+    private func portalIconOnlyItem(portal: Portal) -> some View {
+        let orbSize: CGFloat = 40
+        let constellationColor = portalConstellationColor(for: portal)
+
+        VStack(spacing: 4) {
+            // Orb-style icon using PortalOrbView with no label
+            PortalOrbView(
+                portal: portal,
+                constellationColor: constellationColor,
+                size: orbSize,
+                showLabel: false,
+                onOpen: { openPortal(portal) },
+                onEdit: { portalToEdit = portal },
+                onDelete: { portalManager.delete(portal) },
+                onTogglePin: { portalManager.togglePin(portal) },
+                onToggleConstellation: { constellation in
+                    if constellation.portalIDs.contains(portal.id) {
+                        constellationManager.removePortal(portal.id, from: constellation)
+                    } else {
+                        constellationManager.addPortal(portal.id, to: constellation)
+                    }
+                },
+                constellations: constellationManager.constellations,
+                portalConstellationIDs: Set(constellationManager.constellations.filter { $0.portalIDs.contains(portal.id) }.map { $0.id }),
+                onCreateConstellation: {
+                    portalForNewConstellation = portal
+                    showCreateConstellation = true
+                }
+            )
+
+            // Micro-actions below (when triggered)
+            if microActionsPortalID == portal.id {
+                microActionsView(for: portal)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        #if os(visionOS)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        #else
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        #endif
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
+    }
+
+    /// Get constellation color for a portal (first constellation it belongs to)
+    private func portalConstellationColor(for portal: Portal) -> Color? {
+        for constellation in constellationManager.constellations {
+            if constellation.portalIDs.contains(portal.id) {
+                return constellation.color
+            }
+        }
+        return nil
+    }
+
     // MARK: - Filtered & Sorted Portals
 
     private var filteredAndSortedPortals: [Portal] {

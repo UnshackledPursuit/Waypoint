@@ -31,8 +31,17 @@ struct OrbContainerView: View {
     var body: some View {
         GeometryReader { proxy in
             let isNarrow = proxy.size.width < 200
+            let isVeryNarrow = proxy.size.width < 150
 
-            VStack(spacing: 16) {
+            // Adaptive padding: less padding at narrow widths to maximize content space
+            let adaptivePadding: CGFloat = {
+                if isVeryNarrow { return 8 }
+                if isNarrow { return 12 }
+                if proxy.size.width < 300 { return 16 }
+                return 24
+            }()
+
+            VStack(spacing: isVeryNarrow ? 8 : 16) {
                 if sceneState.isExpanded {
                     OrbExpandedView(
                         title: expandedTitle,
@@ -100,9 +109,9 @@ struct OrbContainerView: View {
                     )
                 }
             }
+            .padding(adaptivePadding)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(24) // Consistent padding on all sides
         #if os(visionOS)
         .toolbar(.hidden, for: .navigationBar)
         #endif

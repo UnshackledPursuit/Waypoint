@@ -16,6 +16,8 @@ struct PortalOrbView: View {
     /// Optional constellation color - used when colorMode is .constellation
     var constellationColor: Color? = nil
     var size: CGFloat = 64
+    /// Whether to show the label below the orb (set to false for strip/compact modes)
+    var showLabel: Bool = true
     let onOpen: () -> Void
 
     // MARK: - Micro-Action Callbacks (optional - enables micro-actions when provided)
@@ -259,14 +261,16 @@ struct PortalOrbView: View {
             .shadow(color: effectiveColor.opacity(0.35 * colorOpacity), radius: 10, y: 4)
             .shadow(color: Color.black.opacity(0.15), radius: 5, y: 2)
 
-            // Label
-            Text(portal.name)
-                .font(.caption)
-                .fontWeight(.medium)
-                .lineLimit(1)
-                .foregroundStyle(.primary)
+            // Label (optional - hidden in strip/compact modes)
+            if showLabel {
+                Text(portal.name)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                    .foregroundStyle(.primary)
+            }
         }
-        .frame(width: size * 1.7)
+        .frame(width: showLabel ? size * 1.7 : size * 1.3)
     }
 
     // MARK: - Micro-Actions (horizontal bar above orb)

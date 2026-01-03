@@ -1110,7 +1110,7 @@ struct QuickAddSheet: View {
             // Don't auto-focus keyboard - let user tap the field if they want it
             selectedConstellationID = activeConstellationID
         }
-        .frame(minWidth: 400, minHeight: 500)
+        .frame(minWidth: 280, minHeight: 400)
     }
 
     // MARK: - Constellation Picker

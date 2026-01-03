@@ -34,8 +34,8 @@
 - Phase 3.0+: Ornament auto-collapse & polish
 - **Onboarding Experience Overhaul (Jan 3, 2026)**
 
-### 🟡 IN PROGRESS
-- **Narrow Window / Smush Mode** (see detailed plan below)
+### ✅ RECENTLY COMPLETED
+- **Narrow Window / Smush Mode** (Jan 3, 2026) - see details below
 
 ### 🔴 NEXT
 - **Phase 6:** Wormhole Swap Animation
@@ -155,7 +155,7 @@ Collapsible settings submenu at bottom of left ornament:
 
 ---
 
-## Narrow Window / Smush Mode Plan (Jan 3, 2026)
+## Narrow Window / Smush Mode (Jan 3, 2026) ✅ IMPLEMENTED
 
 ### Problem Statement
 The Waypoint window cannot resize narrower than ~400pt width. Users want:
@@ -260,12 +260,12 @@ OrbLinearField already has `effectivePadding` logic for `isNarrow` - extend this
 | `PortalRow.swift` | Icon-only variant or new component |
 
 ### Success Criteria
-- [ ] Window resizes smoothly down to ~150pt width
-- [ ] List view shows icon-only at narrow widths
-- [ ] Orb view shows scrollable strip at narrow widths
-- [ ] Padding adapts gracefully
-- [ ] Bottom ornament auto-collapses when too narrow
-- [ ] QuickAddSheet works at reduced width
+- [x] Window resizes smoothly down to ~150pt width
+- [x] List view shows icon-only at narrow widths (<180pt)
+- [x] Orb view shows scrollable strip at narrow widths (<150pt)
+- [x] Padding adapts gracefully (24pt → 16pt → 12pt → 8pt)
+- [x] Ornaments auto-hide when too narrow (<250pt)
+- [x] QuickAddSheet works at reduced width (280pt min)
 
 ### Testing Notes
 - Test on visionOS simulator with window resize handles
