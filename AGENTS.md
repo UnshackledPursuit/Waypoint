@@ -43,13 +43,20 @@
 - **Narrow Window / Smush Mode** (Jan 3, 2026)
 - **Focus Mode** (Jan 3, 2026)
 - **Tooltips for All Ornament Controls** (Jan 3, 2026)
+- **Phase A: Core Interaction Polish (Jan 3, 2026)**
+  - Pin → Favorite rename (star icons system-wide)
+  - Constellation popover with drag-drop reordering
+  - Trailing popover pattern from ornaments
+  - Custom orb hover effects (scale + brightness)
+  - ConditionalHelpModifier for tooltips
+  - Documented patterns in VISIONOS_INTERACTION_PATTERNS.md
 
 ### 🔴 NEXT (Priority Order)
 
-#### Phase A: Core Interaction Polish
-1. **Orb Micro-Actions v2** - Enhanced menu UX, hover feedback, tap-to-open
-2. **Enhanced Hover States** - Glow, lift, label expansion on gaze (like tab bars)
-3. **Popover from Ornament** - Quick actions without leaving context
+#### Phase A.1: Remaining Interaction Polish
+1. **Orb Eye/Gaze Interactions** - Orbs not responding visually to eye gaze (needs device testing)
+2. **Aesthetic Popover Menu** - Color/intensity controls in trailing popover (like constellation popover)
+3. **Filter Popover Menu** - Sort/filter options in trailing popover (like constellation popover)
 
 #### Phase B: UX Refinements
 4. **Haptic Feedback** - Subtle haptics on orb interactions
@@ -396,21 +403,26 @@ private struct TabIconButton: View {
 
 ---
 
-## Orb Micro-Actions v2 (NEXT PHASE)
+## Orb Micro-Actions v2 (PARTIALLY COMPLETE)
 
-### Problem Statement
-The current radial arc menu works but could benefit from:
-- More native visionOS patterns (popovers, context menus)
-- Enhanced hover feedback before long-press
-- Better discoverability for new users
-- Smoother, more elegant transitions
+### What's Done
+- Pin → Favorite rename with star icons throughout app
+- Custom hover effects (scale 1.12x + brightness boost)
+- Removed system `.hoverEffect()` that caused frosted bubble artifacts
+- ConditionalHelpModifier to avoid empty tooltip issues
+- Constellation popover with drag-drop reordering
+- Documented trailing popover and drag-drop patterns
+
+### What Remains
+- **Orb gaze interactions not working** - custom hover effects work in simulator but need device testing
+- May need different approach for visionOS eye tracking vs mouse hover
 
 ### Current Implementation
 `PortalOrbView.swift` uses a custom radial arc layout:
 - Long-press triggers `showActions` state
 - Actions positioned in arc above orb
 - Custom animation with delay per action
-- Works but feels custom/non-native
+- Works but eye gaze response needs investigation
 
 ### Options to Explore
 
@@ -507,15 +519,16 @@ Start with **Option C (Enhanced Radial + Hover)** because:
 - `PortalListView.swift` - Mirror enhancements for consistency
 
 ### Success Criteria
-- [ ] Hover shows subtle feedback before long-press
+- [x] Hover shows subtle feedback before long-press (scale + brightness implemented)
 - [ ] Radial menu animations feel native/polished
 - [ ] Single tap opens portal (no extra button needed)
-- [ ] Actions have tooltips
+- [x] Actions have tooltips (ConditionalHelpModifier)
 - [ ] Context menu available as fallback
 - [ ] Consistent with visionOS design guidelines
+- [ ] Orbs respond to eye gaze on device (needs testing)
 
 ### Testing Notes
-- Test on device for hover effect accuracy
+- **IMPORTANT:** Test on device for eye gaze interaction accuracy - simulator uses mouse hover
 - Verify 60pt touch target compliance
 - Test with reduced motion settings
 - Ensure accessibility with VoiceOver

@@ -1,8 +1,8 @@
 # PROJECT STATUS — January 2026
 
 **Last Updated:** January 3, 2026
-**Branch:** feature/orb-smart-grid
-**Phase:** Onboarding Experience Overhaul Complete
+**Branch:** feature/orb-microactions-v2
+**Phase:** Phase A Core Interaction Polish Complete
 
 ---
 
@@ -10,9 +10,16 @@
 
 Both **List View** and **Orb View** are now **production-ready**. The orb revamp is complete with an adaptive linear layout system that auto-orients based on window dimensions.
 
+**Phase A Complete (Jan 3, 2026):**
+- Pin → Favorite rename (star icons system-wide)
+- Constellation popover with drag-drop reordering
+- Custom orb hover effects (scale + brightness)
+- Trailing popover pattern documented
+
 **Next Phase Focus:**
-1. **Orb Micro-Actions** - Add context actions to orb nodes (radial arc menu)
-2. **Adaptive List View** - Auto-reorient list view like orb view does
+1. **Orb Eye/Gaze Interactions** - Custom hover effects not responding to visionOS eye gaze (needs device testing)
+2. **Aesthetic Popover Menu** - Color/intensity controls in trailing popover style
+3. **Filter Popover Menu** - Sort/filter options in trailing popover style
 
 ---
 
@@ -118,9 +125,34 @@ Radial arc context menu on orbs - edit, pin, delete, add to constellation. Full 
 ### ✅ Phase 5: Adaptive Layouts (COMPLETE)
 Both orb view and list view auto-reorient based on window dimensions. Constellation grouping works in both views.
 
+### ✅ Phase A: Core Interaction Polish (COMPLETE - Jan 3, 2026)
+- Pin → Favorite rename with star icons (white color throughout)
+- Constellation popover from left ornament with drag-drop reordering
+- Trailing popover pattern (arrowEdge: .trailing, toggle state management)
+- Custom orb hover effects (1.12x scale + 0.05 brightness boost)
+- Removed system .hoverEffect() that caused frosted bubble artifacts
+- ConditionalHelpModifier for tooltips (avoids empty tooltip visual issues)
+- Removed star.fill from constellation icon picker (conflicts with favorites)
+- Updated default constellation icon to "sparkles"
+- Documented patterns in VISIONOS_INTERACTION_PATTERNS.md
+
 ---
 
-### 🔴 Phase 6: Wormhole Swap Animation (NEXT)
+### 🔴 Phase A.1: Remaining Interaction Polish (NEXT)
+
+**Goal:** Complete orb gaze interactions and add more trailing popovers
+
+**Issues to Resolve:**
+- Orbs not responding to eye gaze on visionOS device (custom hover works in simulator)
+- May need visionOS-specific approach vs standard SwiftUI .onHover
+
+**Planned Features:**
+- Aesthetic Popover Menu (color/intensity controls like constellation popover)
+- Filter Popover Menu (sort options like constellation popover)
+
+---
+
+### 🟡 Phase 6: Wormhole Swap Animation (FUTURE)
 
 **Goal:** Dramatic constellation switching animation
 

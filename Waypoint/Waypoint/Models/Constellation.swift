@@ -32,7 +32,7 @@ struct Constellation: Identifiable, Codable, Hashable {
         id: UUID = UUID(),
         name: String,
         portalIDs: [UUID] = [],
-        icon: String = "star.fill",
+        icon: String = "sparkles",
         colorHex: String = "#007AFF",
         dateCreated: Date = Date(),
         isActive: Bool = true,

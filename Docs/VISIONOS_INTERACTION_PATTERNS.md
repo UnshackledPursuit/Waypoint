@@ -466,8 +466,63 @@ Uses arc positioning in `PortalOrbView.swift` with calculated angles for action 
 
 ---
 
+## 11. Waypoint Implemented Patterns
+
+### Trailing Popover from Ornament
+A popover that appears to the trailing side of a left ornament button, staying visible and accessible.
+
+**Implementation:**
+```swift
+Button { showPopover.toggle() }
+    .popover(isPresented: $showPopover, arrowEdge: .trailing) {
+        PopoverContent()
+    }
+```
+
+**Key Points:**
+- Use `arrowEdge: .trailing` for popovers from left ornaments
+- Use `.toggle()` instead of setting to `true` for reliable reopening
+- Wrap content in `.ultraThinMaterial` for visionOS glass look
+- Width: 200-230pt works well for list popovers
+
+**Use Cases:**
+- Constellation quick picker
+- Portal filters/sorts
+- Quick settings panels
+- Multi-select options
+
+### Drag and Drop Reordering in Popovers
+Reorder list items using SwiftUI's `.draggable()` and `.dropDestination()`.
+
+**Implementation:**
+```swift
+ForEach(items) { item in
+    ItemRow(item: item)
+        .draggable(item.id.uuidString) {
+            // Drag preview view
+            DragPreview(item: item)
+        }
+        .dropDestination(for: String.self) { droppedItems, _ in
+            guard let sourceID = UUID(uuidString: droppedItems.first ?? ""),
+                  sourceID != item.id else { return false }
+            onReorder(sourceID, item.id)
+            return true
+        }
+}
+```
+
+**Key Points:**
+- Use UUID strings for transferable data (simple, works reliably)
+- Provide visual drag preview with glass material
+- Add drag handle indicator (`line.3.horizontal`) for discoverability
+- Reduce opacity of dragged item for visual feedback
+- Manager's `@Observable` ensures auto-update of other views (bottom ornament)
+
+---
+
 ## Changelog
 
 | Date | Changes |
 |------|---------|
+| 2026-01-03 | Added trailing popover and drag-drop patterns |
 | 2026-01-03 | Initial document creation |

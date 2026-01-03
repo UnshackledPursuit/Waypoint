@@ -169,19 +169,20 @@ struct WaypointBottomOrnament: View {
             }
 
         case .pinned:
-            // Pinned filter - just icon
+            // Favorites filter - star icon (white/neutral)
+            let starColor: Color = isMonoMode ? .secondary : .white
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.25))
+                    .fill(starColor.opacity(0.2))
                     .frame(width: 36, height: 36)
 
                 Circle()
-                    .stroke(Color.white.opacity(0.5), lineWidth: 1.5)
+                    .stroke(starColor.opacity(0.5), lineWidth: 1.5)
                     .frame(width: 36, height: 36)
 
-                Image(systemName: "pin.fill")
+                Image(systemName: "star.fill")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(starColor)
             }
 
         case .constellation(let id):
@@ -274,9 +275,9 @@ struct WaypointBottomOrnament: View {
             }
 
             CompactPillButton(
-                icon: "pin.fill",
+                icon: "star.fill",
                 isSelected: navigationState.filterOption == .pinned,
-                helpText: "Show Pinned",
+                helpText: "Show Favorites",
                 action: {
                     navigationState.filterOption = .pinned
                     scheduleCollapse()

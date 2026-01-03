@@ -1,7 +1,8 @@
 # Branch Status & Management
 
-**Last Updated:** January 1, 2026
+**Last Updated:** January 3, 2026
 **Primary Branch:** `main`
+**Active Feature Branch:** `feature/orb-microactions-v2`
 
 ---
 
@@ -33,6 +34,7 @@ git show other-branch:path/to/file.swift | head -30
 | Branch | Purpose | Status | Action |
 |--------|---------|--------|--------|
 | `main` | Stable production | **ACTIVE** | Keep |
+| `feature/orb-microactions-v2` | Phase A interaction polish | **READY TO MERGE** | Merge to main |
 
 ---
 
@@ -121,17 +123,31 @@ git diff main..other-branch -- path/to/file.swift
 
 ## Current Session Notes
 
-**Session Date:** January 1, 2026
+**Session Date:** January 3, 2026
 
-**What happened:**
-- Attempted to cherry-pick orb files from `phase3-orb-scaffold`
-- Discovered main already had enhanced versions of those files
-- The scaffold branch had older/simpler code that would have overwritten improvements
+**What happened (Phase A: Core Interaction Polish):**
+- Renamed Pin → Favorite with star icons system-wide
+- Implemented constellation popover with drag-drop reordering
+- Created trailing popover pattern from left ornament
+- Added custom orb hover effects (scale + brightness) to replace system hoverEffect
+- Created ConditionalHelpModifier to avoid empty tooltip visual issues
+- Removed star.fill from constellation icon options (conflicts with favorites)
+- Documented patterns in VISIONOS_INTERACTION_PATTERNS.md
 
-**Lesson learned:**
-- Always verify what's on main before cherry-picking
-- Use `git diff` to compare branches before any extraction
-- The orb files were already properly merged via `phase3-orb-clean`
+**Known Issues to Address Next:**
+- Orbs not responding to eye gaze on visionOS device (works in simulator with mouse)
+- Aesthetic popover menu planned (like constellation popover)
+- Filter popover menu planned (like constellation popover)
+
+**Files Changed:**
+- WaypointLeftOrnament.swift - Constellation popover with drag-drop
+- WaypointBottomOrnament.swift - Star color fixes
+- PortalOrbView.swift - Hover effects, tooltip, star colors
+- PortalListView.swift - Pin→Star icons
+- CreateConstellationView.swift - Removed star from icons
+- EditConstellationView.swift - Removed star from icons
+- Constellation.swift - Default icon to sparkles
+- VISIONOS_INTERACTION_PATTERNS.md - New patterns documented
 
 ---
 

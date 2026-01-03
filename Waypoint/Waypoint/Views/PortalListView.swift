@@ -1119,16 +1119,17 @@ struct PortalListView: View {
                 }
                 .buttonStyle(.plain)
 
-                // Pin button
+                // Favorite button
                 Button {
                     portalManager.togglePin(portal)
                     // Reset timer on interaction
                     scheduleMicroActionsDismiss(for: portal.id)
                 } label: {
-                    Image(systemName: portal.isPinned ? "mappin.slash" : "mappin")
+                    Image(systemName: portal.isPinned ? "star.slash" : "star")
                         .font(.title2)
                         .symbolVariant(.circle.fill)
                         .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(portal.isPinned ? .white : .secondary)
                 }
                 .buttonStyle(.plain)
 
@@ -1365,10 +1366,10 @@ struct PortalRow: View {
                 }
             }
 
-            // Pin indicator (grayscale in mono mode)
+            // Favorite indicator (grayscale in mono mode)
             if portal.isPinned {
-                Image(systemName: "pin.fill")
-                    .foregroundColor(shouldDesaturateContent ? Color.secondary : Color.blue)
+                Image(systemName: "star.fill")
+                    .foregroundColor(shouldDesaturateContent ? Color.secondary : Color.white)
                     .font(.caption)
             }
         }

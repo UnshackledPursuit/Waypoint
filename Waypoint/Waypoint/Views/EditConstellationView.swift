@@ -44,8 +44,8 @@ struct EditConstellationView: View {
     // MARK: - Icon Options (single row)
 
     private let iconOptions = [
-        "star.fill", "heart.fill", "bolt.fill", "flame.fill", "sparkles",
-        "moon.fill", "sun.max.fill", "leaf.fill", "briefcase.fill", "book.fill",
+        "sparkles", "heart.fill", "bolt.fill", "flame.fill", "moon.fill",
+        "sun.max.fill", "leaf.fill", "briefcase.fill", "book.fill",
         "gamecontroller.fill", "music.note", "film.fill", "wand.and.stars", "house.fill"
     ]
 

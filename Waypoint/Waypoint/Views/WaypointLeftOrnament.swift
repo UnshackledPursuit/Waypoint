@@ -183,12 +183,13 @@ struct WaypointLeftOrnament: View {
                         if constellationManager.constellations.isEmpty {
                             showCreateConstellation = true
                         } else {
-                            showConstellationPopover = true
+                            // Toggle to ensure proper state sync after dismiss
+                            showConstellationPopover.toggle()
                         }
                         scheduleCollapse()
                     }
                 )
-                .popover(isPresented: $showConstellationPopover) {
+                .popover(isPresented: $showConstellationPopover, arrowEdge: .trailing) {
                     ConstellationQuickPopover(
                         constellations: constellationManager.constellations,
                         onSelect: { constellation in
@@ -202,6 +203,10 @@ struct WaypointLeftOrnament: View {
                         onCreate: {
                             showConstellationPopover = false
                             showCreateConstellation = true
+                        },
+                        onReorder: { sourceID, targetID in
+                            // Reorder and auto-update bottom ornament via @Observable
+                            constellationManager.moveConstellation(sourceID, before: targetID)
                         }
                     )
                     .environment(portalManager)
@@ -989,58 +994,126 @@ private struct SettingsToggleRow: View {
 
 /// Quick access popover for constellations - shows list with actions
 /// Allows filtering, editing, and creating constellations without modal sheets
+/// Supports drag and drop reordering
 private struct ConstellationQuickPopover: View {
     let constellations: [Constellation]
     let onSelect: (Constellation) -> Void
     let onEdit: (Constellation) -> Void
     let onCreate: () -> Void
+    let onReorder: (UUID, UUID) -> Void  // (sourceID, targetID)
 
     @Environment(PortalManager.self) private var portalManager
+    @State private var showEditButtons = false
+    @State private var showInfoPopover = false
+    @State private var draggedConstellation: Constellation?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
-            HStack {
+            HStack(spacing: 6) {
                 Text("Constellations")
-                    .font(.headline)
+                    .font(.subheadline)
                     .fontWeight(.semibold)
+
+                // Info button with popover
+                Button {
+                    showInfoPopover.toggle()
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showInfoPopover) {
+                    Text("Organize portals into constellations to filter and launch them together.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(12)
+                        .frame(width: 200)
+                }
+
                 Spacer()
+
+                // Edit mode toggle
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showEditButtons.toggle()
+                    }
+                } label: {
+                    Image(systemName: showEditButtons ? "pencil.circle.fill" : "pencil.circle")
+                        .font(.system(size: 16))
+                        .foregroundStyle(showEditButtons ? .primary : .secondary)
+                }
+                .buttonStyle(.plain)
+
+                // Create button
                 Button {
                     onCreate()
                 } label: {
                     Image(systemName: "plus.circle.fill")
-                        .font(.title3)
+                        .font(.system(size: 16))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Create Constellation")
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
 
             Divider()
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 10)
 
-            // Constellation list
+            // Constellation list with drag and drop reordering
             ScrollView {
-                VStack(spacing: 4) {
+                VStack(spacing: 2) {
                     ForEach(constellations) { constellation in
                         ConstellationPopoverRow(
                             constellation: constellation,
                             portalCount: portalCount(for: constellation),
+                            showEditButton: showEditButtons,
+                            isDragging: draggedConstellation?.id == constellation.id,
                             onSelect: { onSelect(constellation) },
                             onEdit: { onEdit(constellation) }
                         )
+                        .draggable(constellation.id.uuidString) {
+                            // Drag preview
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(constellation.color.opacity(0.8))
+                                    .frame(width: 24, height: 24)
+                                    .overlay(
+                                        Image(systemName: constellation.icon)
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                    )
+                                Text(constellation.name)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.ultraThinMaterial, in: Capsule())
+                        }
+                        .dropDestination(for: String.self) { items, _ in
+                            guard let sourceIDString = items.first,
+                                  let sourceID = UUID(uuidString: sourceIDString),
+                                  sourceID != constellation.id else {
+                                return false
+                            }
+                            onReorder(sourceID, constellation.id)
+                            return true
+                        } isTargeted: { isTargeted in
+                            // Visual feedback handled by row
+                        }
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 6)
             }
-            .frame(maxHeight: 280)
+            .frame(maxHeight: 260)
         }
-        .frame(width: 260)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .frame(width: 230)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 
     private func portalCount(for constellation: Constellation) -> Int {
@@ -1050,66 +1123,71 @@ private struct ConstellationQuickPopover: View {
     }
 }
 
-/// Individual row in constellation popover
+/// Individual row in constellation popover - glassy with colored icon
+/// Supports drag and drop reordering
 private struct ConstellationPopoverRow: View {
     let constellation: Constellation
     let portalCount: Int
+    var showEditButton: Bool = false
+    var isDragging: Bool = false
     let onSelect: () -> Void
     let onEdit: () -> Void
 
     @State private var isHovering = false
+    @State private var isDropTarget = false
 
     var body: some View {
         Button(action: onSelect) {
-            HStack(spacing: 12) {
-                // Constellation icon orb
+            HStack(spacing: 10) {
+                // Drag handle indicator (subtle)
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 8))
+                    .foregroundStyle(.tertiary)
+
+                // Colored constellation icon orb
                 ZStack {
                     Circle()
-                        .fill(constellation.color.opacity(0.3))
-                        .frame(width: 36, height: 36)
-
-                    Circle()
-                        .stroke(constellation.color.opacity(0.6), lineWidth: 1.5)
-                        .frame(width: 36, height: 36)
+                        .fill(constellation.color.opacity(0.8))
+                        .frame(width: 28, height: 28)
 
                     Image(systemName: constellation.icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(constellation.color)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
                 }
 
                 // Name and count
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(constellation.name)
-                        .font(.subheadline)
+                        .font(.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
                     Text("\(portalCount) portal\(portalCount == 1 ? "" : "s")")
-                        .font(.caption)
+                        .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                // Edit button (on hover)
-                if isHovering {
+                // Edit button (show when edit mode or hovering)
+                if showEditButton || isHovering {
                     Button(action: onEdit) {
                         Image(systemName: "pencil.circle")
-                            .font(.title3)
+                            .font(.system(size: 16))
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help("Edit Constellation")
                     .transition(.opacity)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(isHovering ? Color.white.opacity(0.1) : Color.clear)
             )
+            .opacity(isDragging ? 0.5 : 1.0)
         }
         .buttonStyle(.plain)
         .onHover { hovering in

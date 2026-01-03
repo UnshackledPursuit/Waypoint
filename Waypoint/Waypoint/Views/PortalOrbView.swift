@@ -102,6 +102,21 @@ struct PortalOrbView: View {
         onEdit != nil || onDelete != nil || onTogglePin != nil
     }
 
+    /// Star/favorite color that respects the current color mode
+    /// - constellation mode: Use constellation color (or white fallback)
+    /// - default mode: White (clean, neutral)
+    /// - frost/mono mode: Secondary/gray
+    private var favoriteStarColor: Color {
+        switch orbColorMode {
+        case .constellation:
+            return constellationColor ?? .white
+        case .defaultStyle:
+            return .white
+        case .frost, .mono:
+            return .secondary
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -115,22 +130,19 @@ struct PortalOrbView: View {
             // Main orb content
             orbBody
                 .contentShape(Circle())
-                // Hover effect: lift toward user on gaze
-                #if os(visionOS)
-                .hoverEffect(.lift)
-                .hoverEffect { effect, isActive, _ in
-                    effect
-                        .scaleEffect(isActive ? 1.05 : 1.0)
-                }
-                #endif
+                // Track hover state for visual feedback
                 .onHover { hovering in
-                    withAnimation(.easeInOut(duration: 0.15)) {
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
                         isHovering = hovering
                     }
                 }
-                .scaleEffect(isHovering ? 1.02 : 1.0)
-                .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isHovering)
-                .help(portal.name)
+                // Scale up on gaze for visual feedback
+                .scaleEffect(isHovering ? 1.12 : 1.0)
+                // Slight brightness boost on hover
+                .brightness(isHovering ? 0.05 : 0)
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isHovering)
+                // Only apply tooltip when label is hidden (focus/strip mode) - no empty tooltips
+                .modifier(ConditionalHelpModifier(helpText: portal.name, showHelp: !showLabel))
                 .onTapGesture {
                     if showMicroActions {
                         dismissMicroActions()
@@ -196,8 +208,8 @@ struct PortalOrbView: View {
                                 onTogglePin()
                             } label: {
                                 Label(
-                                    portal.isPinned ? "Unpin" : "Pin",
-                                    systemImage: portal.isPinned ? "mappin.slash" : "mappin"
+                                    portal.isPinned ? "Unfavorite" : "Favorite",
+                                    systemImage: portal.isPinned ? "star.slash" : "star"
                                 )
                             }
                         }
@@ -233,33 +245,26 @@ struct PortalOrbView: View {
 
     // MARK: - Orb Body
 
-    /// Glow multiplier - increases when hovering for visual feedback
-    private var glowMultiplier: Double {
-        isHovering ? 1.4 : 1.0
-    }
-
     private var orbBody: some View {
         VStack(spacing: 8) {
             // Glass sphere orb
             ZStack {
                 // Outer glow - ambient light effect (intensity affects glow strength)
-                // Intensifies on hover for visual feedback
                 Circle()
                     .fill(
                         RadialGradient(
                             colors: [
-                                effectiveColor.opacity(0.3 * colorOpacity * glowMultiplier),
-                                effectiveColor.opacity(0.12 * colorOpacity * glowMultiplier),
-                                effectiveColor.opacity(0.03 * colorOpacity * glowMultiplier),
+                                effectiveColor.opacity(0.2 * colorOpacity),
+                                effectiveColor.opacity(0.08 * colorOpacity),
+                                effectiveColor.opacity(0.02 * colorOpacity),
                                 Color.clear
                             ],
                             center: .center,
                             startRadius: size * 0.35,
-                            endRadius: size * (isHovering ? 0.95 : 0.85)
+                            endRadius: size * 0.85
                         )
                     )
                     .frame(width: size * 1.6, height: size * 1.6)
-                    .animation(.easeInOut(duration: 0.2), value: isHovering)
 
                 // Main sphere body - deeper 3D gradient (intensity affects color saturation)
                 Circle()
@@ -346,6 +351,12 @@ struct PortalOrbView: View {
                     )
                     .frame(width: size * 0.7, height: size * 0.7)
                     .rotationEffect(.degrees(-30))
+
+                // Pin indicator badge (only in focus mode when label is hidden)
+                if portal.isPinned && !showLabel {
+                    pinBadge
+                        .offset(x: size * 0.35, y: -size * 0.35)
+                }
             }
             .frame(width: size * 1.6, height: size * 1.6)
             .shadow(color: effectiveColor.opacity(0.35 * colorOpacity), radius: 10, y: 4)
@@ -353,11 +364,19 @@ struct PortalOrbView: View {
 
             // Label (optional - hidden in strip/compact modes)
             if showLabel {
-                Text(portal.name)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-                    .foregroundStyle(.primary)
+                HStack(spacing: 3) {
+                    // Star indicator for favorited portals
+                    if portal.isPinned {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(favoriteStarColor)
+                    }
+                    Text(portal.name)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                        .foregroundStyle(.primary)
+                }
             }
         }
         .frame(width: showLabel ? size * 1.7 : size * 1.3)
@@ -390,16 +409,17 @@ struct PortalOrbView: View {
                         .buttonStyle(.plain)
                     }
 
-                    // Pin button
+                    // Favorite button
                     if onTogglePin != nil {
                         Button {
                             onTogglePin?()
                             scheduleMicroActionsDismiss()
                         } label: {
-                            Image(systemName: portal.isPinned ? "mappin.slash" : "mappin")
+                            Image(systemName: portal.isPinned ? "star.slash" : "star")
                                 .font(.title3)
                                 .symbolVariant(.circle.fill)
                                 .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(portal.isPinned ? .white : .secondary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -595,6 +615,45 @@ struct PortalOrbView: View {
                 .foregroundStyle(.white)
                 .shadow(color: effectiveColor.opacity(0.8 * colorOpacity), radius: 4)
                 .shadow(color: Color.black.opacity(0.3), radius: 2, y: 1)
+        }
+    }
+
+    // MARK: - Favorite Badge
+
+    /// Small star indicator shown on favorited orbs (focus mode only)
+    private var pinBadge: some View {
+        ZStack {
+            // Background circle
+            Circle()
+                .fill(.ultraThinMaterial)
+                .frame(width: size * 0.28, height: size * 0.28)
+
+            Circle()
+                .stroke(favoriteStarColor.opacity(0.5), lineWidth: 1)
+                .frame(width: size * 0.28, height: size * 0.28)
+
+            // Star icon
+            Image(systemName: "star.fill")
+                .font(.system(size: size * 0.12, weight: .semibold))
+                .foregroundStyle(favoriteStarColor)
+        }
+        .shadow(color: Color.black.opacity(0.2), radius: 2, y: 1)
+    }
+}
+
+// MARK: - Conditional Help Modifier
+
+/// Modifier that only applies .help() when showHelp is true
+/// Avoids empty tooltip bubbles when label is visible
+private struct ConditionalHelpModifier: ViewModifier {
+    let helpText: String
+    let showHelp: Bool
+
+    func body(content: Content) -> some View {
+        if showHelp {
+            content.help(helpText)
+        } else {
+            content
         }
     }
 }

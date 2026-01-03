@@ -18,7 +18,7 @@ struct CreateConstellationView: View {
     let initialPortal: Portal?
 
     @State private var name: String = ""
-    @State private var selectedIcon: String = "star.fill"
+    @State private var selectedIcon: String = "sparkles"
     @State private var selectedColorHex: String = "#007AFF"
     @State private var hasCustomName: Bool = false
     @State private var selectedPortalIDs: Set<UUID> = []
@@ -63,19 +63,18 @@ struct CreateConstellationView: View {
     // MARK: - Icon Options (single row - matches EditConstellationView)
 
     private let iconOptions = [
-        "star.fill", "heart.fill", "bolt.fill", "flame.fill", "sparkles",
-        "moon.fill", "sun.max.fill", "leaf.fill", "briefcase.fill", "book.fill",
+        "sparkles", "heart.fill", "bolt.fill", "flame.fill", "moon.fill",
+        "sun.max.fill", "leaf.fill", "briefcase.fill", "book.fill",
         "gamecontroller.fill", "music.note", "film.fill", "wand.and.stars", "house.fill"
     ]
 
     // MARK: - Icon to Name Mapping
 
     private let iconNameSuggestions: [String: String] = [
-        "star.fill": "Favorites",
+        "sparkles": "Collection",
         "heart.fill": "Saved",
         "bolt.fill": "Quick Access",
         "flame.fill": "Trending",
-        "sparkles": "AI Tools",
         "moon.fill": "Night Owl",
         "sun.max.fill": "Daily",
         "leaf.fill": "Wellness",
