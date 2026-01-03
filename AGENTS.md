@@ -1,43 +1,57 @@
 # AGENTS.md — Waypoint Codex/Claude Instructions
 **Purpose:** Ensure any CLI agent reads the right docs and implements changes safely, one phase at a time.
-**Last Updated:** 2025-01-01
+**Last Updated:** 2026-01-02
 
 ---
 
 ## Required reading (do this first)
-1) `Docs/WAYPOINT_IMPLEMENTATION_PLAN_MASTER_v1.md`
-2) `Docs/DOCS_INDEX.md`
+1) `Docs/PROJECT_STATUS_JAN2026.md` ← **PRIMARY STATUS DOC**
+2) `Docs/build.md`
 3) `Docs/decisions.md`
-4) `Docs/WAYPOINT_NEXT_IMPLEMENTATION_STEPS_v1.md`
-5) `Docs/WAYPOINT_FEATURE_MATRIX_v1.md`
-6) `Docs/WAYPOINT_ORB_WORMHOLE_SWAP_v1.md`
+4) `Docs/dev_standards.md`
 
-## Optional reading (recommended)
-- `Docs/dev_standards.md` (coding style, `// MARK:` structure, modularity expectations)
-- `Docs/REPO_WORKFLOW.md` (phase branches, PR checklist, tagging)
+## Optional reading
+- `Docs/WAYPOINT_ORB_WORMHOLE_SWAP_v1.md` (for Phase 6)
+- `Docs/REPO_WORKFLOW.md` (phase branches, PR checklist)
 
 ---
 
-## Scope guardrails (v1)
-- **NO embedded web browsing.** Launch externally.
-- Keep existing truth layer: `PortalManager` + `ConstellationManager` (no refactor unless explicitly asked).
+## Scope guardrails
+- **NO embedded web browsing.** Launch externally via Safari.
+- Keep existing truth layer: `PortalManager` + `ConstellationManager`.
 - Implement **one phase per change-set**, then stop for user testing.
-- After each phase, update `Docs/decisions.md` **only if** a "sacred decision" changed.
+- **2-second rule:** User must be able to launch any portal in ~2 seconds.
 
-## Phase order (do not reorder)
-1) **Phase 1:** Drag & Drop upgrade (provider-based URL + fileURL + text) ✅ COMPLETE
-2) **Phase 2:** Micro-actions + duplicate summon ✅ COMPLETE
-3) **Phase 3:** Orb sacred flow scaffolding (SwiftUI renderer first) ✅ SCAFFOLDING COMPLETE
-4) **Phase 4:** Wormhole swap (Linear only) ← NEXT
-5) **Phase 5:** File portals (open + persistence strategy later)
+## Current Status (Jan 2026)
+**Branch:** `feature/orb-smart-grid`
 
-## Phase 3 Orb Files Created
-- `OrbSceneState.swift` - Scene state container (hub/expanded/focused)
-- `OrbLayoutEngine.swift` - Auto-switching layouts (Linear/Arc/Spiral/Hemisphere)
-- `OrbContainerView.swift` - Main container with drop support
-- `OrbSceneView.swift`, `OrbHubView.swift`, `OrbFieldView.swift`, `OrbExpandedView.swift`
-- `OrbTopBar.swift`, `OrbModeToggle.swift`, `OrbOrnamentControls.swift`
-- `PortalOrbView.swift`, `ConstellationOrbView.swift`
+### ✅ COMPLETE
+- Phase 1: Drag & Drop upgrade (provider-based)
+- Phase 2: Micro-actions + duplicate handling
+- Phase 3: Orb scaffolding + adaptive layouts
+- Phase 4: Orb micro-actions (radial arc context menu)
+- Phase 5: Adaptive layouts (both views auto-orient)
+- Phase 3.0+: Ornament auto-collapse & polish
+
+### 🔴 NEXT
+- **Phase 6:** Wormhole Swap Animation
+- **Phase 7:** Universe View (strategic overview)
+- **Phase 8:** App Store Polish
+
+## Key Files
+### Views
+- `OrbContainerView.swift` - Main orb container with filtering/sorting
+- `OrbLinearField.swift` - Adaptive smart grid (portrait/landscape)
+- `PortalOrbView.swift` - Individual orb with radial arc menu
+- `PortalListView.swift` - List view with full features
+- `WaypointLeftOrnament.swift` - Left ornament (tabs, quick actions, aesthetics)
+- `WaypointBottomOrnament.swift` - Bottom ornament (filters, constellations)
+
+### Services
+- `PortalManager.swift` - Portal CRUD and persistence
+- `ConstellationManager.swift` - Constellation management
+- `DropParser.swift` - URL extraction from drag items
+- `DropService.swift` - Portal creation from URLs
 
 ## Working style
 - Prefer minimal diffs. Do not “clean up” unrelated code.
