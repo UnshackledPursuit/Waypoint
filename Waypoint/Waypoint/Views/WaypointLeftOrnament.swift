@@ -66,6 +66,7 @@ struct WaypointLeftOrnament: View {
     @State private var showQuickAdd = false
     @State private var showCreateConstellation = false
     @State private var constellationToEdit: Constellation?
+    @State private var showConstellationPopover = false
 
     /// Whether the ornament is expanded (showing all controls)
     @State private var isExpanded = true
@@ -174,19 +175,37 @@ struct WaypointLeftOrnament: View {
                     .frame(width: 20, height: 1)
                     .padding(.vertical, 2)
 
-                // Constellation edit (handles both edit and create)
+                // Constellation quick access (popover with list + actions)
                 TabIconButton(
                     icon: "sparkles",
-                    helpText: constellationManager.constellations.isEmpty ? "Create Constellation" : "Edit Constellation",
+                    helpText: constellationManager.constellations.isEmpty ? "Create Constellation" : "Constellations",
                     action: {
-                        if let first = constellationManager.constellations.first {
-                            constellationToEdit = first
-                        } else {
+                        if constellationManager.constellations.isEmpty {
                             showCreateConstellation = true
+                        } else {
+                            showConstellationPopover = true
                         }
                         scheduleCollapse()
                     }
                 )
+                .popover(isPresented: $showConstellationPopover) {
+                    ConstellationQuickPopover(
+                        constellations: constellationManager.constellations,
+                        onSelect: { constellation in
+                            navigationState.filterOption = .constellation(constellation.id)
+                            showConstellationPopover = false
+                        },
+                        onEdit: { constellation in
+                            showConstellationPopover = false
+                            constellationToEdit = constellation
+                        },
+                        onCreate: {
+                            showConstellationPopover = false
+                            showCreateConstellation = true
+                        }
+                    )
+                    .environment(portalManager)
+                }
 
                 // Ornament settings (only for power users)
                 if showAdvancedControls {
@@ -963,6 +982,141 @@ private struct SettingsToggleRow: View {
         }
         .buttonStyle(.plain)
         .help(helpText ?? "")
+    }
+}
+
+// MARK: - Constellation Quick Popover
+
+/// Quick access popover for constellations - shows list with actions
+/// Allows filtering, editing, and creating constellations without modal sheets
+private struct ConstellationQuickPopover: View {
+    let constellations: [Constellation]
+    let onSelect: (Constellation) -> Void
+    let onEdit: (Constellation) -> Void
+    let onCreate: () -> Void
+
+    @Environment(PortalManager.self) private var portalManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                Text("Constellations")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                Spacer()
+                Button {
+                    onCreate()
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Create Constellation")
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+
+            Divider()
+                .padding(.horizontal, 12)
+
+            // Constellation list
+            ScrollView {
+                VStack(spacing: 4) {
+                    ForEach(constellations) { constellation in
+                        ConstellationPopoverRow(
+                            constellation: constellation,
+                            portalCount: portalCount(for: constellation),
+                            onSelect: { onSelect(constellation) },
+                            onEdit: { onEdit(constellation) }
+                        )
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+            }
+            .frame(maxHeight: 280)
+        }
+        .frame(width: 260)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func portalCount(for constellation: Constellation) -> Int {
+        constellation.portalIDs.filter { id in
+            portalManager.portal(withID: id) != nil
+        }.count
+    }
+}
+
+/// Individual row in constellation popover
+private struct ConstellationPopoverRow: View {
+    let constellation: Constellation
+    let portalCount: Int
+    let onSelect: () -> Void
+    let onEdit: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                // Constellation icon orb
+                ZStack {
+                    Circle()
+                        .fill(constellation.color.opacity(0.3))
+                        .frame(width: 36, height: 36)
+
+                    Circle()
+                        .stroke(constellation.color.opacity(0.6), lineWidth: 1.5)
+                        .frame(width: 36, height: 36)
+
+                    Image(systemName: constellation.icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(constellation.color)
+                }
+
+                // Name and count
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(constellation.name)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text("\(portalCount) portal\(portalCount == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                // Edit button (on hover)
+                if isHovering {
+                    Button(action: onEdit) {
+                        Image(systemName: "pencil.circle")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Edit Constellation")
+                    .transition(.opacity)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isHovering ? Color.white.opacity(0.1) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
     }
 }
 

@@ -35,6 +35,7 @@ struct PortalOrbView: View {
     @State private var showMicroActions = false
     @State private var showConstellationPicker = false
     @State private var microActionsWorkItem: DispatchWorkItem?
+    @State private var isHovering = false
 
     /// Notification name for dismissing all micro-action menus
     private static let dismissAllMenusNotification = Notification.Name("DismissAllOrbMicroActions")
@@ -114,6 +115,22 @@ struct PortalOrbView: View {
             // Main orb content
             orbBody
                 .contentShape(Circle())
+                // Hover effect: lift toward user on gaze
+                #if os(visionOS)
+                .hoverEffect(.lift)
+                .hoverEffect { effect, isActive, _ in
+                    effect
+                        .scaleEffect(isActive ? 1.05 : 1.0)
+                }
+                #endif
+                .onHover { hovering in
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isHovering = hovering
+                    }
+                }
+                .scaleEffect(isHovering ? 1.02 : 1.0)
+                .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isHovering)
+                .help(portal.name)
                 .onTapGesture {
                     if showMicroActions {
                         dismissMicroActions()
@@ -137,6 +154,72 @@ struct PortalOrbView: View {
                             scheduleMicroActionsDismiss()
                         }
                 )
+                // Context menu as accessibility fallback
+                .contextMenu {
+                    if microActionsEnabled {
+                        Button {
+                            onOpen()
+                        } label: {
+                            Label("Open", systemImage: "arrow.up.right.square")
+                        }
+
+                        if !constellations.isEmpty {
+                            Menu {
+                                ForEach(constellations) { constellation in
+                                    Button {
+                                        onToggleConstellation?(constellation)
+                                    } label: {
+                                        let isAssigned = portalConstellationIDs.contains(constellation.id)
+                                        Label(
+                                            constellation.name,
+                                            systemImage: isAssigned ? "checkmark.circle.fill" : "circle"
+                                        )
+                                    }
+                                }
+                                if let onCreateConstellation {
+                                    Divider()
+                                    Button {
+                                        onCreateConstellation()
+                                    } label: {
+                                        Label("New Constellation", systemImage: "plus")
+                                    }
+                                }
+                            } label: {
+                                Label("Constellations", systemImage: "sparkles")
+                            }
+                        }
+
+                        Divider()
+
+                        if let onTogglePin {
+                            Button {
+                                onTogglePin()
+                            } label: {
+                                Label(
+                                    portal.isPinned ? "Unpin" : "Pin",
+                                    systemImage: portal.isPinned ? "mappin.slash" : "mappin"
+                                )
+                            }
+                        }
+
+                        if let onEdit {
+                            Button {
+                                onEdit()
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                        }
+
+                        if let onDelete {
+                            Divider()
+                            Button(role: .destructive) {
+                                onDelete()
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showMicroActions)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showConstellationPicker)
@@ -150,26 +233,33 @@ struct PortalOrbView: View {
 
     // MARK: - Orb Body
 
+    /// Glow multiplier - increases when hovering for visual feedback
+    private var glowMultiplier: Double {
+        isHovering ? 1.4 : 1.0
+    }
+
     private var orbBody: some View {
         VStack(spacing: 8) {
             // Glass sphere orb
             ZStack {
                 // Outer glow - ambient light effect (intensity affects glow strength)
+                // Intensifies on hover for visual feedback
                 Circle()
                     .fill(
                         RadialGradient(
                             colors: [
-                                effectiveColor.opacity(0.3 * colorOpacity),
-                                effectiveColor.opacity(0.12 * colorOpacity),
-                                effectiveColor.opacity(0.03 * colorOpacity),
+                                effectiveColor.opacity(0.3 * colorOpacity * glowMultiplier),
+                                effectiveColor.opacity(0.12 * colorOpacity * glowMultiplier),
+                                effectiveColor.opacity(0.03 * colorOpacity * glowMultiplier),
                                 Color.clear
                             ],
                             center: .center,
                             startRadius: size * 0.35,
-                            endRadius: size * 0.85
+                            endRadius: size * (isHovering ? 0.95 : 0.85)
                         )
                     )
                     .frame(width: size * 1.6, height: size * 1.6)
+                    .animation(.easeInOut(duration: 0.2), value: isHovering)
 
                 // Main sphere body - deeper 3D gradient (intensity affects color saturation)
                 Circle()
