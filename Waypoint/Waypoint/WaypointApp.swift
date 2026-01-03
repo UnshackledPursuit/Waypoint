@@ -36,9 +36,11 @@ struct WaypointApp: App {
 
     // Window size tracking for adaptive layout
     @State private var windowWidth: CGFloat = 400
+    @State private var windowHeight: CGFloat = 600
 
-    /// Threshold below which ornaments are hidden to save space
-    private let narrowOrnamentThreshold: CGFloat = 250
+    /// Thresholds below which ornaments are hidden to save space
+    private let narrowWidthThreshold: CGFloat = 250
+    private let shortHeightThreshold: CGFloat = 200
 
     // MARK: - Scene
 
@@ -55,11 +57,13 @@ struct WaypointApp: App {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onChange(of: geometry.size.width) { _, newWidth in
-                    windowWidth = newWidth
+                .onChange(of: geometry.size) { _, newSize in
+                    windowWidth = newSize.width
+                    windowHeight = newSize.height
                 }
                 .onAppear {
                     windowWidth = geometry.size.width
+                    windowHeight = geometry.size.height
                 }
             }
             .environment(portalManager)
@@ -95,9 +99,9 @@ struct WaypointApp: App {
             }
 #if os(visionOS)
             // Left ornament: Tab switching + quick actions (Paste/Add)
-            // Hidden when window is too narrow or no constellations yet
+            // Hidden when window is too narrow, too short (horizontal strip), or no constellations yet
             .ornament(
-                visibility: (constellationManager.constellations.count >= 1 && windowWidth >= narrowOrnamentThreshold) ? .visible : .hidden,
+                visibility: (constellationManager.constellations.count >= 1 && windowWidth >= narrowWidthThreshold && windowHeight >= shortHeightThreshold) ? .visible : .hidden,
                 attachmentAnchor: .scene(.leading),
                 contentAlignment: .trailing
             ) {
@@ -108,9 +112,9 @@ struct WaypointApp: App {
                     .padding(.trailing, 24)
             }
             // Bottom ornament: Filters, constellations, launch
-            // Hidden when window is too narrow or no portals yet
+            // Hidden when window is too narrow, too short, or no portals yet
             .ornament(
-                visibility: (portalManager.portals.count >= 1 && windowWidth >= narrowOrnamentThreshold) ? .visible : .hidden,
+                visibility: (portalManager.portals.count >= 1 && windowWidth >= narrowWidthThreshold && windowHeight >= shortHeightThreshold) ? .visible : .hidden,
                 attachmentAnchor: .scene(.bottom),
                 contentAlignment: .top
             ) {
