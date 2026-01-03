@@ -753,8 +753,14 @@ private struct SettingsIconButton: View {
                     Circle()
                         .fill(isHovering ? Color.white.opacity(0.15) : Color.clear)
                 )
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .contentShape(Circle())
+        #if os(visionOS)
+        .hoverEffect(.highlight, isEnabled: false)
+        .hoverEffectDisabled()
+        #endif
         .help(helpText)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
