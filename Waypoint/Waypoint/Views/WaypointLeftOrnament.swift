@@ -984,16 +984,21 @@ private struct FilterSortPopover: View {
 
             // Content
             VStack(alignment: .leading, spacing: 14) {
-                // MARK: Sort Section
+                // MARK: Sort Section - Compact grid
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Sort By")
+                    Text("Sort")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 2)
 
-                    VStack(spacing: 4) {
+                    // 3x2 grid for compact display
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 6) {
                         ForEach(SortOrder.allCases, id: \.self) { order in
-                            SortOptionRow(
+                            CompactSortButton(
                                 order: order,
                                 isSelected: navigationState.sortOrder == order,
                                 action: {
@@ -1013,9 +1018,9 @@ private struct FilterSortPopover: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 2)
 
-                    // Ungrouped filter toggle
-                    FilterToggleRow(
-                        label: "Ungrouped Only",
+                    // Ungrouped filter toggle - compact
+                    CompactFilterButton(
+                        label: "Ungrouped",
                         icon: "tray",
                         count: ungroupedCount,
                         isActive: navigationState.filterOption == .ungrouped,
@@ -1034,7 +1039,7 @@ private struct FilterSortPopover: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 14)
 
-            // Footer
+            // Footer - contextual description
             Divider()
                 .padding(.horizontal, 12)
 
@@ -1042,23 +1047,24 @@ private struct FilterSortPopover: View {
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
         }
-        .frame(width: 200)
+        .frame(width: 220)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 
     private var footerDescription: String {
         if navigationState.filterOption == .ungrouped {
-            return "Showing portals not in any constellation"
+            return "Portals not in any constellation"
         }
-        return "Sort: \(navigationState.sortOrder.rawValue)"
+        return navigationState.sortOrder.footerDescription
     }
 }
 
-/// Row for sort option selection
-private struct SortOptionRow: View {
+/// Compact sort button for grid layout
+private struct CompactSortButton: View {
     let order: SortOrder
     let isSelected: Bool
     let action: () -> Void
@@ -1067,29 +1073,24 @@ private struct SortOptionRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            VStack(spacing: 3) {
                 Image(systemName: order.icon)
-                    .font(.system(size: 12))
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
                     .foregroundStyle(isSelected ? .primary : .secondary)
-                    .frame(width: 20)
 
                 Text(order.rawValue)
-                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
                     .foregroundStyle(isSelected ? .primary : .secondary)
-
-                Spacer()
-
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.primary)
-                }
             }
-            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.white.opacity(0.15) : (isHovering ? Color.white.opacity(0.08) : Color.clear))
+                    .fill(isSelected ? Color.white.opacity(0.2) : (isHovering ? Color.white.opacity(0.1) : Color.secondary.opacity(0.08)))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? Color.white.opacity(0.4) : Color.clear, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -1101,8 +1102,8 @@ private struct SortOptionRow: View {
     }
 }
 
-/// Row for filter toggle with count badge
-private struct FilterToggleRow: View {
+/// Compact filter button with icon, label, and count
+private struct CompactFilterButton: View {
     let label: String
     let icon: String
     let count: Int
@@ -1113,14 +1114,13 @@ private struct FilterToggleRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 12))
+                    .font(.system(size: 12, weight: isActive ? .semibold : .regular))
                     .foregroundStyle(isActive ? .primary : .secondary)
-                    .frame(width: 20)
 
                 Text(label)
-                    .font(.system(size: 13, weight: isActive ? .semibold : .regular))
+                    .font(.system(size: 12, weight: isActive ? .semibold : .regular))
                     .foregroundStyle(isActive ? .primary : .secondary)
 
                 Spacer()
@@ -1128,7 +1128,7 @@ private struct FilterToggleRow: View {
                 // Count badge
                 if count > 0 {
                     Text("\(count)")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(isActive ? .primary : .secondary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -1147,7 +1147,7 @@ private struct FilterToggleRow: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isActive ? Color.white.opacity(0.15) : (isHovering ? Color.white.opacity(0.08) : Color.clear))
+                    .fill(isActive ? Color.white.opacity(0.15) : (isHovering ? Color.white.opacity(0.08) : Color.secondary.opacity(0.08)))
             )
         }
         .buttonStyle(.plain)

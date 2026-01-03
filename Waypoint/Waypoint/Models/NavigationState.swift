@@ -9,6 +9,24 @@ import Foundation
 import SwiftUI
 import Combine
 
+// MARK: - Color Extension for Hue Sorting
+
+extension Color {
+    /// Returns the hue value (0-1) for sorting colors by spectrum position
+    var hueValue: CGFloat {
+        #if os(visionOS) || os(iOS)
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        var alpha: CGFloat = 0
+        UIColor(self).getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+        return hue
+        #else
+        return 0
+        #endif
+    }
+}
+
 // MARK: - Filter Option
 
 enum FilterOption: Hashable {
@@ -40,10 +58,11 @@ enum FilterOption: Hashable {
 
 enum SortOrder: String, CaseIterable {
     case custom = "Custom"
-    case dateAdded = "Date Added"
-    case recent = "Recently Used"
-    case name = "Name"
-    case constellation = "Constellation"
+    case dateAdded = "Added"
+    case recent = "Recent"
+    case name = "A-Z"
+    case constellation = "Groups"
+    case constellationColor = "Color"
 
     var icon: String {
         switch self {
@@ -51,7 +70,20 @@ enum SortOrder: String, CaseIterable {
         case .dateAdded: return "calendar"
         case .recent: return "clock"
         case .name: return "textformat"
-        case .constellation: return "star.circle"
+        case .constellation: return "folder"
+        case .constellationColor: return "paintpalette"
+        }
+    }
+
+    /// Short description for footer display
+    var footerDescription: String {
+        switch self {
+        case .custom: return "Manual drag ordering"
+        case .dateAdded: return "Newest first"
+        case .recent: return "Recently opened first"
+        case .name: return "Alphabetical"
+        case .constellation: return "Grouped with section headers"
+        case .constellationColor: return "By constellation color"
         }
     }
 }

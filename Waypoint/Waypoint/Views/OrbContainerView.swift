@@ -203,6 +203,17 @@ struct OrbContainerView: View {
                 }
                 // Within same constellation, sort by name
                 return portal1.name.localizedCaseInsensitiveCompare(portal2.name) == .orderedAscending
+            case .constellationColor:
+                // Sort by constellation color (hue), no section headers
+                let color1 = constellationColor(for: portal1)
+                let color2 = constellationColor(for: portal2)
+                let hue1 = color1?.hueValue ?? 999 // Ungrouped go last
+                let hue2 = color2?.hueValue ?? 999
+                if hue1 != hue2 {
+                    return hue1 < hue2
+                }
+                // Within same color, sort by name
+                return portal1.name.localizedCaseInsensitiveCompare(portal2.name) == .orderedAscending
             }
         }
     }
@@ -215,6 +226,16 @@ struct OrbContainerView: View {
             }
         }
         return Int.max // Portals not in any constellation go last
+    }
+
+    /// Returns the color of the first constellation containing this portal, or nil if ungrouped
+    private func constellationColor(for portal: Portal) -> Color? {
+        for constellation in constellationManager.constellations {
+            if constellation.portalIDs.contains(portal.id) {
+                return constellation.color
+            }
+        }
+        return nil
     }
 
     private var expandedTitle: String {

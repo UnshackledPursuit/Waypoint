@@ -848,6 +848,17 @@ struct PortalListView: View {
                 }
                 // Within same constellation, sort by name
                 return portal1.name.localizedCaseInsensitiveCompare(portal2.name) == .orderedAscending
+            case .constellationColor:
+                // Sort by constellation color (hue), no section headers
+                let color1 = portalConstellationColor(for: portal1)
+                let color2 = portalConstellationColor(for: portal2)
+                let hue1 = color1?.hueValue ?? 999 // Ungrouped go last
+                let hue2 = color2?.hueValue ?? 999
+                if hue1 != hue2 {
+                    return hue1 < hue2
+                }
+                // Within same color, sort by name
+                return portal1.name.localizedCaseInsensitiveCompare(portal2.name) == .orderedAscending
             }
         }
     }

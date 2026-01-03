@@ -60,7 +60,7 @@ struct PortalOrbView: View {
     }
 
     /// The effective color after applying color mode and intensity
-    /// - constellation mode: Use constellation color for all orbs
+    /// - constellation mode: Use constellation color for all orbs (ungrouped = neutral gray)
     /// - default mode: Use portal's actual style color
     /// - frost mode: Gray bubbles, icons keep color
     /// - mono mode: Everything grayscale
@@ -69,7 +69,9 @@ struct PortalOrbView: View {
         let baseColor: Color
         switch orbColorMode {
         case .constellation:
-            baseColor = constellationColor ?? portalNaturalColor
+            // Ungrouped portals (no constellation color) appear neutral in Group mode
+            // This helps users visually identify which portals need organization
+            baseColor = constellationColor ?? Color.gray
         case .defaultStyle:
             baseColor = portalNaturalColor
         case .frost, .mono:
@@ -103,13 +105,13 @@ struct PortalOrbView: View {
     }
 
     /// Star/favorite color that respects the current color mode
-    /// - constellation mode: Use constellation color (or white fallback)
+    /// - constellation mode: Use constellation color (ungrouped = gray)
     /// - default mode: White (clean, neutral)
     /// - frost/mono mode: Secondary/gray
     private var favoriteStarColor: Color {
         switch orbColorMode {
         case .constellation:
-            return constellationColor ?? .white
+            return constellationColor ?? .gray
         case .defaultStyle:
             return .white
         case .frost, .mono:
