@@ -162,6 +162,11 @@ struct OrbContainerView: View {
             filtered = portalManager.portals
         case .pinned:
             filtered = portalManager.portals.filter { $0.isPinned }
+        case .ungrouped:
+            // Portals not in any constellation
+            filtered = portalManager.portals.filter { portal in
+                !constellationManager.constellations.contains { $0.portalIDs.contains(portal.id) }
+            }
         case .constellation(let id):
             guard let constellation = constellationManager.constellation(withID: id) else {
                 filtered = portalManager.portals
@@ -217,7 +222,9 @@ struct OrbContainerView: View {
         case .all:
             return "All Portals"
         case .pinned:
-            return "Pinned"
+            return "Favorites"
+        case .ungrouped:
+            return "Ungrouped"
         case .constellation(let id):
             guard let constellation = constellationManager.constellation(withID: id) else {
                 return "All Portals"
@@ -248,7 +255,9 @@ struct OrbContainerView: View {
         case .all:
             return "square.grid.2x2"
         case .pinned:
-            return "pin.fill"
+            return "star.fill"
+        case .ungrouped:
+            return "tray"
         case .constellation(let id):
             guard let constellation = constellationManager.constellation(withID: id) else {
                 return "square.grid.2x2"
@@ -263,7 +272,9 @@ struct OrbContainerView: View {
         case .all:
             return .secondary
         case .pinned:
-            return .orange
+            return .yellow
+        case .ungrouped:
+            return .gray
         case .constellation(let id):
             guard let constellation = constellationManager.constellation(withID: id) else {
                 return .secondary
@@ -283,7 +294,7 @@ struct OrbContainerView: View {
     /// Whether we should use per-portal constellation colors (All or Pinned view, not a specific constellation)
     private var shouldUsePerPortalColors: Bool {
         switch navigationState.filterOption {
-        case .all, .pinned:
+        case .all, .pinned, .ungrouped:
             return true
         case .constellation:
             return false

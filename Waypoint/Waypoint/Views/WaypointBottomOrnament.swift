@@ -185,6 +185,23 @@ struct WaypointBottomOrnament: View {
                     .foregroundStyle(starColor)
             }
 
+        case .ungrouped:
+            // Ungrouped filter - tray icon
+            let ungroupedColor: Color = isMonoMode ? .secondary : .gray
+            ZStack {
+                Circle()
+                    .fill(ungroupedColor.opacity(0.2))
+                    .frame(width: 36, height: 36)
+
+                Circle()
+                    .stroke(ungroupedColor.opacity(0.5), lineWidth: 1.5)
+                    .frame(width: 36, height: 36)
+
+                Image(systemName: "tray")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ungroupedColor)
+            }
+
         case .constellation(let id):
             // Constellation - icon + name
             if let constellation = constellationManager.constellation(withID: id) {

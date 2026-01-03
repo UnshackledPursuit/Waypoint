@@ -806,6 +806,11 @@ struct PortalListView: View {
             filtered = portalManager.portals
         case .pinned:
             filtered = portalManager.pinnedPortals
+        case .ungrouped:
+            // Portals not in any constellation
+            filtered = portalManager.portals.filter { portal in
+                !constellationManager.constellations.contains { $0.portalIDs.contains(portal.id) }
+            }
         case .constellation(let constellationID):
             if let constellation = constellationManager.constellation(withID: constellationID) {
                 filtered = portalManager.portals.filter { constellation.portalIDs.contains($0.id) }

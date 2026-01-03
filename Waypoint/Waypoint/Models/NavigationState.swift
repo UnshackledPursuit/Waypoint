@@ -14,12 +14,14 @@ import Combine
 enum FilterOption: Hashable {
     case all
     case pinned
+    case ungrouped
     case constellation(UUID)
 
     var displayName: String {
         switch self {
         case .all: return "All"
-        case .pinned: return "Pinned"
+        case .pinned: return "Favorites"
+        case .ungrouped: return "Ungrouped"
         case .constellation: return "Constellation"
         }
     }
@@ -27,8 +29,9 @@ enum FilterOption: Hashable {
     var icon: String {
         switch self {
         case .all: return "square.grid.2x2"
-        case .pinned: return "pin.fill"
-        case .constellation: return "star.fill"
+        case .pinned: return "star.fill"
+        case .ungrouped: return "tray"
+        case .constellation: return "sparkles"
         }
     }
 }

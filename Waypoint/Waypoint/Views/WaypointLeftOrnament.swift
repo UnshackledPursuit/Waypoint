@@ -68,6 +68,7 @@ struct WaypointLeftOrnament: View {
     @State private var constellationToEdit: Constellation?
     @State private var showConstellationPopover = false
     @State private var showAestheticPopover = false
+    @State private var showFilterSortPopover = false
 
     /// Whether the ornament is expanded (showing all controls)
     @State private var isExpanded = true
@@ -175,6 +176,22 @@ struct WaypointLeftOrnament: View {
                             colorMode: orbColorMode,
                             orbSize: orbSize
                         )
+                    }
+
+                    // Filter/Sort popover button
+                    TabIconButton(
+                        icon: "line.3.horizontal.decrease",
+                        helpText: "Sort & Filter",
+                        action: {
+                            showFilterSortPopover.toggle()
+                            scheduleCollapse()
+                        }
+                    )
+                    .popover(isPresented: $showFilterSortPopover, arrowEdge: .trailing) {
+                        FilterSortPopover()
+                            .environment(navigationState)
+                            .environment(constellationManager)
+                            .environment(portalManager)
                     }
                 }
 
@@ -920,6 +937,218 @@ private struct OrbSizeStyleButton: View {
                     .font(.system(size: 10, weight: isSelected ? .bold : .medium))
                     .foregroundStyle(isSelected ? .primary : .secondary)
             }
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
+    }
+}
+
+// MARK: - Filter/Sort Popover
+
+/// Popover for sort order and filter options
+/// Uses trailing popover pattern from left ornament
+private struct FilterSortPopover: View {
+    @Environment(NavigationState.self) private var navigationState
+    @Environment(ConstellationManager.self) private var constellationManager
+
+    /// Count of ungrouped portals for badge display
+    @Environment(PortalManager.self) private var portalManager
+
+    private var ungroupedCount: Int {
+        portalManager.portals.filter { portal in
+            !constellationManager.constellations.contains { $0.portalIDs.contains(portal.id) }
+        }.count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("Sort & Filter")
+                    .font(.system(size: 14, weight: .semibold))
+                Spacer()
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+
+            Divider()
+                .padding(.horizontal, 12)
+
+            // Content
+            VStack(alignment: .leading, spacing: 14) {
+                // MARK: Sort Section
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Sort By")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 2)
+
+                    VStack(spacing: 4) {
+                        ForEach(SortOrder.allCases, id: \.self) { order in
+                            SortOptionRow(
+                                order: order,
+                                isSelected: navigationState.sortOrder == order,
+                                action: {
+                                    withAnimation(.spring(response: 0.3)) {
+                                        navigationState.sortOrder = order
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // MARK: Filter Section
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Filter")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 2)
+
+                    // Ungrouped filter toggle
+                    FilterToggleRow(
+                        label: "Ungrouped Only",
+                        icon: "tray",
+                        count: ungroupedCount,
+                        isActive: navigationState.filterOption == .ungrouped,
+                        action: {
+                            withAnimation(.spring(response: 0.3)) {
+                                if navigationState.filterOption == .ungrouped {
+                                    navigationState.filterOption = .all
+                                } else {
+                                    navigationState.filterOption = .ungrouped
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+
+            // Footer
+            Divider()
+                .padding(.horizontal, 12)
+
+            Text(footerDescription)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+        }
+        .frame(width: 200)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var footerDescription: String {
+        if navigationState.filterOption == .ungrouped {
+            return "Showing portals not in any constellation"
+        }
+        return "Sort: \(navigationState.sortOrder.rawValue)"
+    }
+}
+
+/// Row for sort option selection
+private struct SortOptionRow: View {
+    let order: SortOrder
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: order.icon)
+                    .font(.system(size: 12))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .frame(width: 20)
+
+                Text(order.rawValue)
+                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.primary)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? Color.white.opacity(0.15) : (isHovering ? Color.white.opacity(0.08) : Color.clear))
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
+    }
+}
+
+/// Row for filter toggle with count badge
+private struct FilterToggleRow: View {
+    let label: String
+    let icon: String
+    let count: Int
+    let isActive: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundStyle(isActive ? .primary : .secondary)
+                    .frame(width: 20)
+
+                Text(label)
+                    .font(.system(size: 13, weight: isActive ? .semibold : .regular))
+                    .foregroundStyle(isActive ? .primary : .secondary)
+
+                Spacer()
+
+                // Count badge
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(isActive ? .primary : .secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(isActive ? Color.white.opacity(0.2) : Color.secondary.opacity(0.15))
+                        )
+                }
+
+                // Toggle indicator
+                Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 14))
+                    .foregroundStyle(isActive ? .primary : .secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isActive ? Color.white.opacity(0.15) : (isHovering ? Color.white.opacity(0.08) : Color.clear))
+            )
         }
         .buttonStyle(.plain)
         .onHover { hovering in
