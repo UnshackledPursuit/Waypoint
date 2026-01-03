@@ -162,7 +162,7 @@ struct WaypointLeftOrnament: View {
 
                     // Appearance popover button
                     TabIconButton(
-                        icon: "paintpalette",
+                        icon: "slider.horizontal.3",
                         helpText: "Appearance",
                         action: {
                             showAestheticPopover.toggle()
@@ -173,8 +173,7 @@ struct WaypointLeftOrnament: View {
                         AestheticPopover(
                             intensity: $orbIntensity,
                             colorMode: orbColorMode,
-                            orbSize: orbSize,
-                            onInteraction: scheduleCollapse
+                            orbSize: orbSize
                         )
                     }
                 }
@@ -612,27 +611,20 @@ private struct SettingsToggleRow: View {
 
 /// Beautiful popover for appearance controls - intensity, color mode, orb size
 /// Uses trailing popover pattern from left ornament
+/// Note: Description footer pattern can be reused for Portal Pack popover later
 private struct AestheticPopover: View {
     @Binding var intensity: Double
     @Binding var colorMode: OrbColorMode
     @Binding var orbSize: OrbSize
-    var onInteraction: (() -> Void)? = nil
 
-    /// Slider fill color based on mode
-    private var sliderColor: Color {
-        switch colorMode {
-        case .constellation: return .orange
-        case .defaultStyle: return .blue
-        case .frost: return .cyan
-        case .mono: return .gray
-        }
-    }
+    /// Ordered color modes: Group, Frost, Portal, Mono
+    private let colorModeOrder: [OrbColorMode] = [.constellation, .frost, .defaultStyle, .mono]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
             HStack {
-                Image(systemName: "paintpalette.fill")
+                Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
                 Text("Appearance")
@@ -662,7 +654,6 @@ private struct AestheticPopover: View {
                                 intensity = 0.0
                                 switchToColorModeIfNeeded()
                             }
-                            onInteraction?()
                         } label: {
                             Image(systemName: "snowflake")
                                 .font(.system(size: 12, weight: .medium))
@@ -670,7 +661,7 @@ private struct AestheticPopover: View {
                                 .frame(width: 24, height: 24)
                                 .background(
                                     Circle()
-                                        .fill(intensity < 0.2 ? Color.cyan.opacity(0.6) : Color.clear)
+                                        .fill(intensity < 0.2 ? Color.white.opacity(0.3) : Color.clear)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -683,11 +674,11 @@ private struct AestheticPopover: View {
                                     .fill(Color.secondary.opacity(0.2))
                                     .frame(height: 6)
 
-                                // Fill
+                                // Fill - neutral gradient
                                 Capsule()
                                     .fill(
                                         LinearGradient(
-                                            colors: [.gray.opacity(0.4), sliderColor],
+                                            colors: [.secondary.opacity(0.3), .white.opacity(0.8)],
                                             startPoint: .leading,
                                             endPoint: .trailing
                                         )
@@ -708,7 +699,6 @@ private struct AestheticPopover: View {
                                         let newValue = value.location.x / geo.size.width
                                         intensity = min(max(newValue, 0), 1)
                                         switchToColorModeIfNeeded()
-                                        onInteraction?()
                                     }
                             )
                         }
@@ -720,15 +710,14 @@ private struct AestheticPopover: View {
                                 intensity = 1.0
                                 switchToColorModeIfNeeded()
                             }
-                            onInteraction?()
                         } label: {
                             Image(systemName: "sun.max.fill")
                                 .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(intensity > 0.8 ? .orange : .secondary)
+                                .foregroundStyle(intensity > 0.8 ? .white : .secondary)
                                 .frame(width: 24, height: 24)
                                 .background(
                                     Circle()
-                                        .fill(intensity > 0.8 ? Color.orange.opacity(0.3) : Color.clear)
+                                        .fill(intensity > 0.8 ? Color.white.opacity(0.3) : Color.clear)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -743,7 +732,7 @@ private struct AestheticPopover: View {
                         .padding(.horizontal, 2)
 
                     HStack(spacing: 6) {
-                        ForEach(OrbColorMode.allCases, id: \.self) { mode in
+                        ForEach(colorModeOrder, id: \.self) { mode in
                             ColorStyleButton(
                                 mode: mode,
                                 isSelected: colorMode == mode,
@@ -751,7 +740,6 @@ private struct AestheticPopover: View {
                                     withAnimation(.spring(response: 0.3)) {
                                         colorMode = mode
                                     }
-                                    onInteraction?()
                                 }
                             )
                         }
@@ -774,7 +762,6 @@ private struct AestheticPopover: View {
                                     withAnimation(.spring(response: 0.3)) {
                                         orbSize = size
                                     }
-                                    onInteraction?()
                                 }
                             )
                         }
@@ -807,21 +794,13 @@ private struct AestheticPopover: View {
 }
 
 /// Individual color style button with icon and label
+/// Uses consistent white/neutral color scheme for cohesive appearance
 private struct ColorStyleButton: View {
     let mode: OrbColorMode
     let isSelected: Bool
     let action: () -> Void
 
     @State private var isHovering = false
-
-    private var modeColor: Color {
-        switch mode {
-        case .constellation: return .orange
-        case .defaultStyle: return .blue
-        case .frost: return .cyan
-        case .mono: return .gray
-        }
-    }
 
     private var modeIcon: String {
         switch mode {
@@ -846,18 +825,18 @@ private struct ColorStyleButton: View {
             VStack(spacing: 4) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(isSelected ? modeColor.opacity(0.25) : (isHovering ? Color.white.opacity(0.1) : Color.secondary.opacity(0.1)))
+                        .fill(isSelected ? Color.white.opacity(0.2) : (isHovering ? Color.white.opacity(0.1) : Color.secondary.opacity(0.1)))
                         .frame(width: 44, height: 36)
 
                     if isSelected {
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(modeColor.opacity(0.6), lineWidth: 1.5)
+                            .stroke(Color.white.opacity(0.5), lineWidth: 1.5)
                             .frame(width: 44, height: 36)
                     }
 
                     Image(systemName: modeIcon)
                         .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
-                        .foregroundStyle(isSelected ? modeColor : .secondary)
+                        .foregroundStyle(isSelected ? .primary : .secondary)
                 }
 
                 Text(modeLabel)
