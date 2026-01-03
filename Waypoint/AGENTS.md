@@ -171,11 +171,16 @@ git push origin --delete experiment/xxx
 These are ideas for post-v1 consideration. Do not implement unless explicitly requested.
 
 - **Custom Sort Enhancements:** Review/improve custom sort behavior (known issues with drag-reorder - needs investigation before modifying)
-- **Quick Add Redesign:** Split URL input from Portal Packs. Consider:
+- **Quick Add Redesign (PRE-LAUNCH v1.0):** Split URL input from Portal Packs. Consider:
   - Portal Packs as trailing auxiliary window (right side of app)
   - Live constellation assignment with real-time main view updates
   - Quick URL input as fast popup modal (keep simple, URL-focused)
   - Preserve current layout structure - works well
+- **Portal Display Density Option:** Add explicit toggle for orb display density:
+  - Comfortable: Current orbs with labels
+  - Compact: Smaller orbs, labels hidden
+  - Dense: Square/rectangle cards in grid layout
+  - See `LiquidGlassOrbPreview.swift` for card prototypes
 - **Orb Visual Redesign:** Explore alternative orb rendering styles (current: 7-layer glass sphere). Options to investigate: Liquid Glass (visionOS 26), RealityKit 3D, simpler flat styles, custom shapes per portal type
 - **Save Profile / Workspace Presets:** Allow users to save and restore portal/constellation setups
 - **Delete Constellation UI:** Add explicit delete option in constellation management
