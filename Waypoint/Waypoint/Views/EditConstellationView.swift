@@ -46,14 +46,14 @@ struct EditConstellationView: View {
     private let iconOptions = [
         "star.fill", "heart.fill", "bolt.fill", "flame.fill", "sparkles",
         "moon.fill", "sun.max.fill", "leaf.fill", "briefcase.fill", "book.fill",
-        "gamecontroller.fill", "music.note", "film.fill", "camera.fill", "house.fill"
+        "gamecontroller.fill", "music.note", "film.fill", "wand.and.stars", "house.fill"
     ]
 
     // MARK: - Color Options
 
     private let colorOptions = [
         "#007AFF", "#34C759", "#FF9500", "#FF3B30",
-        "#AF52DE", "#5856D6", "#FF2D55", "#00C7BE"
+        "#FFCC00", "#5856D6", "#00C7BE", "#1C1C1E"
     ]
 
     // MARK: - Body

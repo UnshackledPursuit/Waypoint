@@ -34,16 +34,15 @@ struct AddPortalView: View {
 
     // Predefined colors for picker
     private let colorOptions: [(name: String, hex: String)] = [
-        ("Red", "#F44336"),
-        ("Pink", "#E91E63"),
-        ("Purple", "#9C27B0"),
-        ("Indigo", "#3F51B5"),
         ("Blue", "#2196F3"),
+        ("Indigo", "#3F51B5"),
         ("Cyan", "#00BCD4"),
         ("Teal", "#009688"),
         ("Green", "#4CAF50"),
+        ("Yellow", "#FFCC00"),
         ("Orange", "#FF9800"),
-        ("Deep Orange", "#FF5722"),
+        ("Red", "#F44336"),
+        ("Black", "#1C1C1E"),
     ]
 
     // Available icons for custom selection
@@ -62,8 +61,13 @@ struct AddPortalView: View {
     }
     
     private var isValid: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !url.trimmingCharacters(in: .whitespaces).isEmpty
+        // For create mode, only URL is required (name will be auto-derived)
+        // For edit mode, both are required
+        if isEditing {
+            return !name.trimmingCharacters(in: .whitespaces).isEmpty &&
+                   !url.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        return !url.trimmingCharacters(in: .whitespaces).isEmpty
     }
     
     // MARK: - Initialization
@@ -192,15 +196,22 @@ struct AddPortalView: View {
                     }
                 }
             } else {
-                // Create new portal mode
+                // Create new portal mode - simplified, URL-only
                 Section {
-                    TextField("Name", text: $name, prompt: Text("YouTube"))
-
                     HStack {
-                        TextField("URL", text: $url, prompt: Text("youtube.com"))
+                        TextField("URL or site name", text: $url, prompt: Text("youtube.com"))
                             .textContentType(.URL)
                             .autocapitalization(.none)
                             .autocorrectionDisabled()
+                            .onSubmit {
+                                if isValid {
+                                    savePortal()
+                                }
+                            }
+                            .onChange(of: url) { _, newValue in
+                                // Auto-derive name from URL as user types
+                                autoDeriveName(from: newValue)
+                            }
 
                         Button {
                             pasteFromClipboard()
@@ -210,7 +221,17 @@ struct AddPortalView: View {
                         .buttonStyle(.bordered)
                     }
 
-                    Toggle("Pin to Top", isOn: $isPinned)
+                    // Show derived name preview (non-editable in create mode)
+                    if !name.isEmpty {
+                        HStack {
+                            Text("Name")
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(name)
+                                .foregroundStyle(.primary)
+                        }
+                        .font(.subheadline)
+                    }
                 }
 
                 // Quick Start orbs - beautiful glass spheres
@@ -967,28 +988,56 @@ struct AddPortalView: View {
         if let clipboardString = UIPasteboard.general.string {
             let trimmed = clipboardString.trimmingCharacters(in: .whitespacesAndNewlines)
             url = trimmed
-
-            // Auto-fill name if empty
-            if name.isEmpty {
-                if let urlObj = URL(string: trimmed) ?? URL(string: "https://" + trimmed) {
-                    name = DropService.extractSmartName(from: urlObj)
-                }
-            }
+            // Name will be auto-derived via onChange
         }
         #endif
     }
 
+    /// Auto-derives portal name from URL input
+    private func autoDeriveName(from input: String) {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            name = ""
+            return
+        }
+
+        // Build a URL from input (add https:// if needed)
+        var urlString = trimmed
+        if !urlString.contains("://") {
+            if urlString.contains(".") {
+                urlString = "https://" + urlString
+            } else {
+                // Bare name like "youtube" → "https://youtube.com"
+                urlString = "https://\(urlString).com"
+            }
+        }
+
+        if let urlObj = URL(string: urlString) {
+            name = DropService.extractSmartName(from: urlObj)
+        }
+    }
+
     private func savePortal() {
-        let cleanedName = name.trimmingCharacters(in: .whitespaces)
+        var cleanedName = name.trimmingCharacters(in: .whitespaces)
         var cleanedURL = url.trimmingCharacters(in: .whitespaces)
-        
+
         // Auto-add https:// if missing and it looks like a domain
         if !cleanedURL.contains("://") {
             // Check if it looks like a domain (contains a dot and no spaces)
             if cleanedURL.contains(".") && !cleanedURL.contains(" ") {
                 cleanedURL = "https://" + cleanedURL
                 print("✨ Auto-added https:// to URL: \(cleanedURL)")
+            } else if !cleanedURL.contains(".") && !cleanedURL.contains(" ") {
+                // Bare name like "youtube" → "https://www.youtube.com"
+                cleanedURL = "https://www.\(cleanedURL).com"
+                print("✨ Auto-expanded to full URL: \(cleanedURL)")
             }
+        }
+
+        // Auto-derive name if empty (fallback for create mode)
+        if cleanedName.isEmpty, let urlObj = URL(string: cleanedURL) {
+            cleanedName = DropService.extractSmartName(from: urlObj)
+            print("✨ Auto-derived name: \(cleanedName)")
         }
         
         // Auto-add www for common sites that need it

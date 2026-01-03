@@ -80,7 +80,12 @@ struct WaypointApp: App {
             }
 #if os(visionOS)
             // Left ornament: Tab switching + quick actions (Paste/Add)
-            .ornament(visibility: .visible, attachmentAnchor: .scene(.leading), contentAlignment: .trailing) {
+            // Only show after first constellation is created
+            .ornament(
+                visibility: constellationManager.constellations.count >= 1 ? .visible : .hidden,
+                attachmentAnchor: .scene(.leading),
+                contentAlignment: .trailing
+            ) {
                 WaypointLeftOrnament(selectedTab: $selectedTab)
                     .environment(portalManager)
                     .environment(navigationState)
@@ -88,7 +93,12 @@ struct WaypointApp: App {
                     .padding(.trailing, 24)
             }
             // Bottom ornament: Filters, constellations, launch
-            .ornament(visibility: .visible, attachmentAnchor: .scene(.bottom), contentAlignment: .top) {
+            // Only show after first portal is created
+            .ornament(
+                visibility: portalManager.portals.count >= 1 ? .visible : .hidden,
+                attachmentAnchor: .scene(.bottom),
+                contentAlignment: .top
+            ) {
                 WaypointBottomOrnament()
                     .environment(portalManager)
                     .environment(navigationState)

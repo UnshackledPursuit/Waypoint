@@ -13,6 +13,7 @@ struct CreateConstellationView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(ConstellationManager.self) private var constellationManager
+    @Environment(PortalManager.self) private var portalManager
 
     let initialPortal: Portal?
 
@@ -20,6 +21,26 @@ struct CreateConstellationView: View {
     @State private var selectedIcon: String = "star.fill"
     @State private var selectedColorHex: String = "#007AFF"
     @State private var hasCustomName: Bool = false
+    @State private var selectedPortalIDs: Set<UUID> = []
+
+    /// Portals to show for selection - prioritize ungrouped, then recent (max 8)
+    private var suggestedPortals: [Portal] {
+        let allPortals = portalManager.portals.filter { $0.id != initialPortal?.id }
+
+        // Find portals not in any constellation
+        let ungroupedPortals = allPortals.filter { portal in
+            !constellationManager.constellations.contains { $0.portalIDs.contains(portal.id) }
+        }
+
+        // Start with ungrouped portals
+        var result = ungroupedPortals
+
+        // Fill remaining slots with other portals (most recently used)
+        let remaining = allPortals.filter { !ungroupedPortals.contains($0) }
+        result.append(contentsOf: remaining)
+
+        return Array(result.prefix(8))
+    }
 
     private var isValid: Bool {
         !displayName.trimmingCharacters(in: .whitespaces).isEmpty
@@ -44,31 +65,26 @@ struct CreateConstellationView: View {
     private let iconOptions = [
         "star.fill", "heart.fill", "bolt.fill", "flame.fill", "sparkles",
         "moon.fill", "sun.max.fill", "leaf.fill", "briefcase.fill", "book.fill",
-        "gamecontroller.fill", "music.note", "film.fill", "camera.fill", "house.fill"
+        "gamecontroller.fill", "music.note", "film.fill", "wand.and.stars", "house.fill"
     ]
 
     // MARK: - Icon to Name Mapping
 
     private let iconNameSuggestions: [String: String] = [
         "star.fill": "Favorites",
-        "heart.fill": "Personal",
+        "heart.fill": "Saved",
         "bolt.fill": "Quick Access",
-        "flame.fill": "Hot",
+        "flame.fill": "Trending",
         "sparkles": "AI Tools",
-        "moon.fill": "Night Mode",
-        "sun.max.fill": "Morning",
-        "cloud.fill": "Cloud",
-        "leaf.fill": "Nature",
-        "drop.fill": "Essentials",
+        "moon.fill": "Night Owl",
+        "sun.max.fill": "Daily",
+        "leaf.fill": "Wellness",
         "briefcase.fill": "Work",
-        "book.fill": "Reading",
+        "book.fill": "Articles",
         "gamecontroller.fill": "Gaming",
         "music.note": "Music",
-        "film.fill": "Entertainment",
-        "camera.fill": "Photos",
-        "paintbrush.fill": "Creative",
-        "hammer.fill": "Tools",
-        "gearshape.fill": "Settings",
+        "film.fill": "Watch",
+        "wand.and.stars": "Creative",
         "house.fill": "Home"
     ]
 
@@ -76,7 +92,7 @@ struct CreateConstellationView: View {
 
     private let colorOptions = [
         "#007AFF", "#34C759", "#FF9500", "#FF3B30",
-        "#AF52DE", "#5856D6", "#FF2D55", "#00C7BE"
+        "#FFCC00", "#5856D6", "#00C7BE", "#1C1C1E"
     ]
 
     // MARK: - Body
@@ -131,6 +147,11 @@ struct CreateConstellationView: View {
                     }
                     .padding(.horizontal)
 
+                    // Portal picker - show when creating without initial portal
+                    if initialPortal == nil && !suggestedPortals.isEmpty {
+                        portalPickerSection
+                    }
+
                     // Footer info
                     VStack(spacing: 16) {
                         if let portal = initialPortal {
@@ -140,6 +161,15 @@ struct CreateConstellationView: View {
                                 Text("Starting with: \(portal.name)")
                                     .font(.caption)
                                     .foregroundStyle(.tertiary)
+                                Spacer()
+                            }
+                        } else if !selectedPortalIDs.isEmpty {
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text("\(selectedPortalIDs.count) portal\(selectedPortalIDs.count == 1 ? "" : "s") selected")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                                 Spacer()
                             }
                         }
@@ -451,6 +481,178 @@ struct CreateConstellationView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Portal Picker Section
+
+    private var portalPickerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            Text("Add portals")
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .padding(.horizontal)
+
+            // Scrollable orb picker
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(suggestedPortals) { portal in
+                        portalOrbButton(for: portal)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private func portalOrbButton(for portal: Portal) -> some View {
+        let isSelected = selectedPortalIDs.contains(portal.id)
+        let color = colorForURL(portal.url)
+
+        return Button {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                if isSelected {
+                    selectedPortalIDs.remove(portal.id)
+                } else {
+                    selectedPortalIDs.insert(portal.id)
+                }
+            }
+        } label: {
+            VStack(spacing: 6) {
+                ZStack {
+                    // Selection glow
+                    if isSelected {
+                        Circle()
+                            .fill(Color(hex: selectedColorHex).opacity(0.4))
+                            .frame(width: 56, height: 56)
+                            .blur(radius: 8)
+                    }
+
+                    // Outer glow
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    color.opacity(0.3),
+                                    color.opacity(0.1),
+                                    Color.clear
+                                ],
+                                center: .center,
+                                startRadius: 12,
+                                endRadius: 26
+                            )
+                        )
+                        .frame(width: 48, height: 48)
+
+                    // Glass orb background
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 40, height: 40)
+
+                    // Favicon or fallback letter
+                    AsyncImage(url: faviconURL(for: portal.url)) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 26, height: 26)
+                                .clipShape(Circle())
+                        case .failure, .empty:
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        RadialGradient(
+                                            colors: [color.opacity(0.6), color.opacity(0.85)],
+                                            center: UnitPoint(x: 0.3, y: 0.25),
+                                            startRadius: 0,
+                                            endRadius: 13
+                                        )
+                                    )
+                                    .frame(width: 26, height: 26)
+                                Text(String(portal.name.prefix(1)).uppercased())
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
+                            }
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+
+                    // Glass highlight
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.white.opacity(0.4), Color.clear],
+                                center: UnitPoint(x: 0.25, y: 0.2),
+                                startRadius: 0,
+                                endRadius: 15
+                            )
+                        )
+                        .frame(width: 40, height: 40)
+
+                    // Rim light
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(isSelected ? 0.6 : 0.4),
+                                    Color.white.opacity(isSelected ? 0.3 : 0.1)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: isSelected ? 2 : 0.5
+                        )
+                        .frame(width: 40, height: 40)
+
+                    // Selection checkmark badge
+                    if isSelected {
+                        Circle()
+                            .fill(Color(hex: selectedColorHex))
+                            .frame(width: 18, height: 18)
+                            .overlay(
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(.white)
+                            )
+                            .offset(x: 16, y: -16)
+                    }
+                }
+                .frame(width: 52, height: 52)
+                .shadow(color: isSelected ? Color(hex: selectedColorHex).opacity(0.4) : color.opacity(0.3), radius: isSelected ? 8 : 4, y: 2)
+
+                // Portal name
+                Text(portal.name)
+                    .font(.caption2)
+                    .fontWeight(isSelected ? .medium : .regular)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .lineLimit(1)
+                    .frame(width: 56)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - URL Helpers
+
+    private func faviconURL(for urlString: String) -> URL? {
+        guard let url = URL(string: urlString),
+              let host = url.host else {
+            return nil
+        }
+        return URL(string: "https://icons.duckduckgo.com/ip3/\(host).ico")
+    }
+
+    private func colorForURL(_ urlString: String) -> Color {
+        guard let url = URL(string: urlString),
+              let host = url.host else {
+            return .blue
+        }
+        return Color.fromHost(host)
+    }
+
     // MARK: - Quick Add Section
 
     private var quickAddSection: some View {
@@ -535,9 +737,14 @@ struct CreateConstellationView: View {
         let finalName = displayName.trimmingCharacters(in: .whitespaces)
 
         var portalIDs: [UUID] = []
+
+        // Add initial portal if provided
         if let portal = initialPortal {
             portalIDs.append(portal.id)
         }
+
+        // Add selected portals from picker
+        portalIDs.append(contentsOf: selectedPortalIDs)
 
         let constellation = Constellation(
             name: finalName,
@@ -547,7 +754,7 @@ struct CreateConstellationView: View {
         )
 
         constellationManager.add(constellation)
-        print("✨ Created constellation: \(finalName)")
+        print("✨ Created constellation: \(finalName) with \(portalIDs.count) portals")
         dismiss()
     }
 }
@@ -557,9 +764,11 @@ struct CreateConstellationView: View {
 #Preview {
     CreateConstellationView(initialPortal: nil)
         .environment(ConstellationManager())
+        .environment(PortalManager())
 }
 
 #Preview("With Portal") {
     CreateConstellationView(initialPortal: Portal.sample)
         .environment(ConstellationManager())
+        .environment(PortalManager())
 }

@@ -23,6 +23,10 @@ struct WaypointBottomOrnament: View {
     @Environment(PortalManager.self) private var portalManager
 
     @State private var constellationToEdit: Constellation?
+    @State private var showCreateConstellation = false
+
+    // Onboarding state for constellation creation
+    @State private var pulsingConstellationID: UUID?
 
     /// Whether the ornament is expanded (showing all controls)
     @State private var isExpanded = true
@@ -32,6 +36,9 @@ struct WaypointBottomOrnament: View {
 
     /// Auto-collapse delay in seconds
     private let collapseDelay: TimeInterval = 8.0
+
+    /// Whether bottom ornament should auto-collapse (default: false = stay open)
+    @AppStorage("bottomOrnamentAutoCollapse") private var autoCollapseEnabled: Bool = false
 
     /// Global orb color mode
     @AppStorage("orbColorMode") private var orbColorModeRaw: String = OrbColorMode.defaultStyle.rawValue
@@ -58,8 +65,21 @@ struct WaypointBottomOrnament: View {
         .onAppear {
             scheduleCollapse()
         }
+        .onChange(of: autoCollapseEnabled) { _, newValue in
+            if newValue {
+                scheduleCollapse()
+            } else {
+                collapseWorkItem?.cancel()
+            }
+        }
         .sheet(item: $constellationToEdit) { constellation in
             EditConstellationView(constellation: constellation)
+        }
+        .sheet(isPresented: $showCreateConstellation) {
+            CreateConstellationView(initialPortal: nil)
+                .onDisappear {
+                    handleConstellationCreated()
+                }
         }
     }
 
@@ -80,6 +100,7 @@ struct WaypointBottomOrnament: View {
                             constellation: constellation,
                             isSelected: isConstellation(constellation),
                             isMonoMode: isMonoMode,
+                            isPulsing: pulsingConstellationID == constellation.id,
                             onTap: {
                                 navigationState.selectConstellation(constellation)
                                 scheduleCollapse()
@@ -97,6 +118,9 @@ struct WaypointBottomOrnament: View {
                 .padding(.horizontal, 2)
             }
             .frame(maxWidth: 350)
+
+            // Create constellation button (always visible)
+            createConstellationButton
 
             // Launch All (only when constellation selected)
             if selectedConstellation != nil {
@@ -212,6 +236,7 @@ struct WaypointBottomOrnament: View {
     }
 
     private func scheduleCollapse() {
+        guard autoCollapseEnabled else { return }
         collapseWorkItem?.cancel()
         let workItem = DispatchWorkItem { [self] in
             collapse()
@@ -311,6 +336,30 @@ struct WaypointBottomOrnament: View {
         return false
     }
 
+    // MARK: - Create Constellation Button
+
+    private var createConstellationButton: some View {
+        Button {
+            showCreateConstellation = true
+            scheduleCollapse()
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(Color.secondary.opacity(0.15))
+                    .frame(width: 36, height: 36)
+
+                Circle()
+                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                    .frame(width: 36, height: 36)
+
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Actions
 
     private func launchConstellation(_ constellation: Constellation) {
@@ -325,6 +374,22 @@ struct WaypointBottomOrnament: View {
             }
         }
         print("🚀 Launched constellation: \(constellation.name)")
+    }
+
+    /// Handle constellation creation - pulse the new constellation orb
+    private func handleConstellationCreated() {
+        // Check if a new constellation was just created
+        guard let newest = constellationManager.constellations.last else { return }
+
+        // Pulse the new constellation orb to draw attention
+        pulsingConstellationID = newest.id
+
+        // Stop pulsing after 5 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            pulsingConstellationID = nil
+        }
+
+        print("✨ Created constellation: \(newest.name)")
     }
 }
 
@@ -374,12 +439,14 @@ private struct ConstellationPill: View {
     let constellation: Constellation
     let isSelected: Bool
     var isMonoMode: Bool = false
+    var isPulsing: Bool = false
     let onTap: () -> Void
     let onEdit: () -> Void
     let onLaunch: () -> Void
     var onInteraction: (() -> Void)? = nil
 
     @State private var isHovering = false
+    @State private var pulseScale: CGFloat = 1.0
 
     /// Effective color - grayscale in mono mode
     private var effectiveColor: Color {
@@ -389,21 +456,29 @@ private struct ConstellationPill: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 5) {
-                // Small orb
+                // Small orb with optional pulsing
                 ZStack {
+                    // Pulsing glow ring
+                    if isPulsing {
+                        Circle()
+                            .fill(effectiveColor.opacity(0.3))
+                            .frame(width: 28, height: 28)
+                            .scaleEffect(pulseScale)
+                    }
+
                     Circle()
-                        .fill(effectiveColor.opacity(isSelected ? 0.5 : 0.3))
+                        .fill(effectiveColor.opacity(isSelected || isPulsing ? 0.5 : 0.3))
                         .frame(width: 28, height: 28)
 
-                    if isSelected {
+                    if isSelected || isPulsing {
                         Circle()
                             .stroke(effectiveColor, lineWidth: 2)
                             .frame(width: 28, height: 28)
                     }
 
                     Image(systemName: constellation.icon)
-                        .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-                        .foregroundStyle(isSelected ? effectiveColor : .secondary)
+                        .font(.system(size: 12, weight: isSelected || isPulsing ? .semibold : .regular))
+                        .foregroundStyle(isSelected || isPulsing ? effectiveColor : .secondary)
                 }
 
                 // Label on hover or selected
@@ -443,6 +518,24 @@ private struct ConstellationPill: View {
             }
             if hovering {
                 onInteraction?()
+            }
+        }
+        .onChange(of: isPulsing) { _, newValue in
+            if newValue {
+                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                    pulseScale = 1.4
+                }
+            } else {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    pulseScale = 1.0
+                }
+            }
+        }
+        .onAppear {
+            if isPulsing {
+                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                    pulseScale = 1.4
+                }
             }
         }
     }

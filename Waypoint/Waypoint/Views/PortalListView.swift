@@ -16,6 +16,13 @@ struct PortalListView: View {
     @Environment(PortalManager.self) private var portalManager
     @Environment(ConstellationManager.self) private var constellationManager
     @Environment(NavigationState.self) private var navigationState
+
+    // Onboarding toast state
+    @State private var showFirstPortalToast = false
+    @State private var showDragHintToast = false
+    @State private var showConstellationHint = false
+    @State private var newConstellationName = ""
+
     @State private var showAddPortal = false
     @State private var portalToEdit: Portal?
     @State private var showQuickStart = false
@@ -136,6 +143,41 @@ struct PortalListView: View {
                 .overlay(alignment: .bottom) {
                     if showOpenFailed {
                         openFailedToast
+                    }
+                }
+                // Onboarding toast - first portal
+                .overlay(alignment: .top) {
+                    if showFirstPortalToast {
+                        OnboardingToastView(
+                            message: "Portal created!",
+                            submessage: "Tap to open • Drag more links to add"
+                        ) {
+                            showFirstPortalToast = false
+                        }
+                        .padding(.top, 60)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+                // Onboarding hint - first constellation
+                .overlay(alignment: .top) {
+                    if showConstellationHint {
+                        ConstellationHintView(constellationName: newConstellationName) {
+                            showConstellationHint = false
+                        }
+                        .padding(.top, 60)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+                // Watch for new portals added via AddPortalView
+                .onChange(of: portalManager.portals.count) { oldCount, newCount in
+                    if newCount > oldCount {
+                        handlePortalAdded()
+                    }
+                }
+                // Watch for new constellations created
+                .onChange(of: constellationManager.constellations.count) { oldCount, newCount in
+                    if newCount > oldCount {
+                        handleConstellationAdded()
                     }
                 }
             }
@@ -494,7 +536,7 @@ struct PortalListView: View {
 
         if !newPortals.isEmpty {
             portalManager.addMultiple(newPortals)
-            registerCreatedPortal(newPortals.last)
+            registerCreatedPortal(newPortals.last, viaDrag: true)
 
             lastDropCount = newPortals.count
             withAnimation {
@@ -891,10 +933,46 @@ struct PortalListView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
     }
 
-    private func registerCreatedPortal(_ portal: Portal?) {
+    private func registerCreatedPortal(_ portal: Portal?, viaDrag: Bool = false) {
         guard let portal else { return }
         lastCreatedPortalID = portal.id
         requestFocus(on: portal.id)
+    }
+
+    /// Called when a portal is added (via onChange of portals.count)
+    private func handlePortalAdded() {
+        // Show onboarding toast for first few portals
+        let count = portalManager.portals.count
+
+        if count <= 3 && !OnboardingState.hasShownFirstPortalHint {
+            OnboardingState.hasShownFirstPortalHint = true
+            // Small delay to let the sheet dismiss first
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    showFirstPortalToast = true
+                }
+            }
+            print("🎉 Showing first portal toast (count: \(count))")
+        }
+    }
+
+    /// Called when a constellation is added (via onChange of constellations.count)
+    private func handleConstellationAdded() {
+        // Show onboarding hint for first constellation
+        guard let newest = constellationManager.constellations.last else { return }
+
+        if !OnboardingState.hasShownFirstConstellationHint {
+            OnboardingState.hasShownFirstConstellationHint = true
+            newConstellationName = newest.name
+
+            // Small delay to let the sheet dismiss first
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    showConstellationHint = true
+                }
+            }
+            print("✨ Showing first constellation hint: \(newest.name)")
+        }
     }
 
     private func existingPortal(for url: URL) -> Portal? {

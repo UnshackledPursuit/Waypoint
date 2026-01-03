@@ -67,7 +67,7 @@ struct WaypointLeftOrnament: View {
     @State private var constellationToEdit: Constellation?
 
     /// Whether the ornament is expanded (showing all controls)
-    @State private var isExpanded = false
+    @State private var isExpanded = true
     /// Timer work item for auto-collapse
     @State private var collapseWorkItem: DispatchWorkItem?
 
@@ -100,21 +100,34 @@ struct WaypointLeftOrnament: View {
     /// Auto-collapse delay in seconds
     private let collapseDelay: TimeInterval = 8.0
 
+    /// Whether left ornament should auto-collapse (default: false = stay open)
+    @AppStorage("leftOrnamentAutoCollapse") private var autoCollapseEnabled: Bool = false
+
+    /// Whether to show advanced controls (view toggle, aesthetics)
+    /// Only show after 10 portals AND 1 constellation
+    private var showAdvancedControls: Bool {
+        portalManager.portals.count >= 10 && constellationManager.constellations.count >= 1
+    }
+
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 4) {
-            // View mode toggle (always visible)
-            CompactViewToggle(selectedTab: $selectedTab, onInteraction: scheduleCollapse)
+            // View mode toggle - only show after 10 portals + 1 constellation
+            if showAdvancedControls {
+                CompactViewToggle(selectedTab: $selectedTab, onInteraction: scheduleCollapse)
+            }
 
             if isExpanded {
-                // Divider
-                Rectangle()
-                    .fill(Color.secondary.opacity(0.3))
-                    .frame(width: 20, height: 1)
-                    .padding(.vertical, 2)
+                // Divider (only if view toggle is shown)
+                if showAdvancedControls {
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.3))
+                        .frame(width: 20, height: 1)
+                        .padding(.vertical, 2)
+                }
 
-                // Quick actions
+                // Quick actions (always visible when expanded)
                 TabIconButton(
                     icon: "doc.on.clipboard",
                     action: {
@@ -131,20 +144,23 @@ struct WaypointLeftOrnament: View {
                     }
                 )
 
-                // Divider before color controls
-                Rectangle()
-                    .fill(Color.secondary.opacity(0.3))
-                    .frame(width: 20, height: 1)
-                    .padding(.vertical, 2)
+                // Aesthetic controls - only show after 10 portals + 1 constellation
+                if showAdvancedControls {
+                    // Divider before color controls
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.3))
+                        .frame(width: 20, height: 1)
+                        .padding(.vertical, 2)
 
-                // Collapsible intensity control
-                IntensityControl(intensity: $orbIntensity, onInteraction: scheduleCollapse)
+                    // Collapsible intensity control
+                    IntensityControl(intensity: $orbIntensity, onInteraction: scheduleCollapse)
 
-                // Color mode toggle (vertical 4-way)
-                ColorModeToggle(colorMode: orbColorMode, onInteraction: scheduleCollapse)
+                    // Color mode toggle (vertical 4-way)
+                    ColorModeToggle(colorMode: orbColorMode, onInteraction: scheduleCollapse)
 
-                // Orb size picker
-                OrbSizeToggle(orbSize: orbSize, onInteraction: scheduleCollapse)
+                    // Orb size picker
+                    OrbSizeToggle(orbSize: orbSize, onInteraction: scheduleCollapse)
+                }
 
                 // Divider before constellation controls
                 Rectangle()
@@ -164,6 +180,16 @@ struct WaypointLeftOrnament: View {
                         scheduleCollapse()
                     }
                 )
+
+                // Ornament settings (only for power users)
+                if showAdvancedControls {
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.3))
+                        .frame(width: 20, height: 1)
+                        .padding(.vertical, 2)
+
+                    OrnamentSettingsToggle(onInteraction: scheduleCollapse)
+                }
 
                 #if DEBUG
                 // Divider before debug controls
@@ -201,6 +227,13 @@ struct WaypointLeftOrnament: View {
                 expand()
             }
         }
+        .onChange(of: autoCollapseEnabled) { _, newValue in
+            if newValue {
+                scheduleCollapse()
+            } else {
+                collapseWorkItem?.cancel()
+            }
+        }
         .sheet(isPresented: $showQuickAdd) {
             QuickAddSheet(activeConstellationID: selectedConstellationID)
         }
@@ -228,6 +261,7 @@ struct WaypointLeftOrnament: View {
     }
 
     private func scheduleCollapse() {
+        guard autoCollapseEnabled else { return }
         collapseWorkItem?.cancel()
         let workItem = DispatchWorkItem { [self] in
             collapse()
@@ -744,6 +778,130 @@ private struct OrbSizeButton: View {
     }
 }
 
+// MARK: - Ornament Settings Toggle
+
+/// Collapsible submenu for ornament auto-collapse settings
+private struct OrnamentSettingsToggle: View {
+    var onInteraction: (() -> Void)? = nil
+
+    @State private var isExpanded = false
+    @State private var collapseWorkItem: DispatchWorkItem?
+
+    @AppStorage("leftOrnamentAutoCollapse") private var leftAutoCollapse: Bool = false
+    @AppStorage("bottomOrnamentAutoCollapse") private var bottomAutoCollapse: Bool = false
+
+    var body: some View {
+        VStack(spacing: 2) {
+            if isExpanded {
+                // Left ornament toggle (no slash = stays visible, slash = will auto-hide)
+                SettingsToggleRow(
+                    icon: "sidebar.left",
+                    isOn: $leftAutoCollapse,
+                    onToggle: {
+                        scheduleCollapse()
+                        onInteraction?()
+                    }
+                )
+
+                // Bottom ornament toggle
+                SettingsToggleRow(
+                    icon: "dock.rectangle",
+                    isOn: $bottomAutoCollapse,
+                    onToggle: {
+                        scheduleCollapse()
+                        onInteraction?()
+                    }
+                )
+
+                // Close button
+                Button {
+                    isExpanded = false
+                    onInteraction?()
+                } label: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.green)
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(.plain)
+            } else {
+                // Collapsed: show settings icon
+                Button {
+                    isExpanded = true
+                    scheduleCollapse()
+                    onInteraction?()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 26, height: 26)
+                        .background(
+                            Circle()
+                                .fill(Color.secondary.opacity(0.15))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.secondary.opacity(0.15))
+        )
+        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+    }
+
+    private func scheduleCollapse() {
+        collapseWorkItem?.cancel()
+        let workItem = DispatchWorkItem {
+            withAnimation {
+                isExpanded = false
+            }
+        }
+        collapseWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0, execute: workItem)
+    }
+}
+
+/// Toggle row for settings - shows ornament icon with slash when auto-collapse is ON
+private struct SettingsToggleRow: View {
+    let icon: String
+    @Binding var isOn: Bool
+    var onToggle: (() -> Void)? = nil
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+            onToggle?()
+        } label: {
+            ZStack {
+                // Main icon
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(isOn ? .secondary : .primary)
+
+                // Slash overlay when auto-collapse is ON (will hide)
+                if isOn {
+                    Rectangle()
+                        .fill(Color.secondary)
+                        .frame(width: 2, height: 20)
+                        .rotationEffect(.degrees(45))
+                }
+            }
+            .frame(width: 32, height: 32)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isOn ? Color.secondary.opacity(0.1) : Color.white.opacity(0.15))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isOn ? Color.clear : Color.white.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Debug Menu Button
 
 #if DEBUG
@@ -753,6 +911,11 @@ private struct DebugMenuButton: View {
     var onInteraction: (() -> Void)? = nil
 
     @State private var isExpanded = false
+
+    /// Resets onboarding state via AppStorage
+    private func resetOnboarding() {
+        OnboardingState.reset()
+    }
 
     var body: some View {
         VStack(spacing: 2) {
@@ -809,6 +972,19 @@ private struct DebugMenuButton: View {
                         .foregroundStyle(.red)
                         .frame(width: 26, height: 26)
                         .background(Circle().fill(Color.red.opacity(0.15)))
+                }
+                .buttonStyle(.plain)
+
+                // Reset Onboarding
+                Button {
+                    resetOnboarding()
+                    isExpanded = false
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.cyan)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.cyan.opacity(0.15)))
                 }
                 .buttonStyle(.plain)
 

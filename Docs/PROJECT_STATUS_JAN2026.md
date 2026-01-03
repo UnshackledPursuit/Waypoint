@@ -1,8 +1,8 @@
 # PROJECT STATUS — January 2026
 
-**Last Updated:** January 2, 2026
-**Branch:** phase3-orb-scaffold
-**Phase:** 3.0+ Complete - Orb Polish & Ornament Auto-Collapse
+**Last Updated:** January 3, 2026
+**Branch:** feature/orb-smart-grid
+**Phase:** Onboarding Experience Overhaul Complete
 
 ---
 
@@ -295,3 +295,61 @@ git push -u origin feature/orb-revamp
 - **Removed constellation header from orb view** - Bottom ornament shows current selection
 - **Removed section headers toggle** - Ornament was getting crowded
 - **Simplified left ornament** - Clean icon buttons without hover labels (visionOS limitation)
+
+### Onboarding Experience Overhaul (Complete - Jan 3, 2026)
+
+**Goal:** Reduce cognitive load for new users while preserving power user features.
+
+**Progressive UI Disclosure:**
+- Fresh install: Clean welcome screen, no ornaments visible
+- First portal created: Bottom ornament appears (filters + create constellation button)
+- First constellation created: Left ornament appears (basic actions only)
+- Power user (10+ portals, 1+ constellation): Full left ornament with aesthetics and view toggle
+
+**Onboarding Toasts:**
+- First portal toast: "Portal created! Tap to open • Drag more links to add"
+- First constellation hint: "[Name] created! Long press a portal to add it"
+- Green checkmark styling, auto-dismiss after 6 seconds
+- Proper z-ordering (overlays content, not hidden behind ornaments)
+
+**Simplified Portal Creation:**
+- URL-only validation in create mode (name auto-derives)
+- Hidden Pin toggle in create mode
+- Auto-name derivation from URL hostname
+
+**Portal Picker Redesign (CreateConstellationView):**
+- Glassy orb style with favicons matching app design language
+- Prioritizes ungrouped portals (not in any constellation)
+- Shows up to 8 portals to fill width
+- Selection checkmark badge in constellation color
+
+**Color Palette Update:**
+- Removed light purple (#AF52DE) and pink (#FF2D55)
+- Added yellow (#FFCC00) and black (#1C1C1E)
+- Consistent across CreateConstellationView, EditConstellationView, AddPortalView
+
+**Icon Name Improvements:**
+- book.fill → "Articles" (was "Reading")
+- heart.fill → "Saved" (was "Personal")
+- flame.fill → "Trending" (was "Hot")
+- moon.fill → "Night Owl" (was "Night Mode")
+- film.fill → "Watch" (was "Entertainment")
+- wand.and.stars → "Creative" (new, replaces camera.fill)
+
+**Ornament Settings Submenu:**
+- Collapsible gear button at bottom of left ornament (power users only)
+- sidebar.left toggle for side ornament auto-collapse
+- dock.rectangle toggle for bottom ornament auto-collapse
+- Slash overlay indicates "will auto-hide"
+- No slash indicates "stays visible"
+- Settings respond immediately via onChange handlers
+
+**Files Changed:**
+- `OnboardingHintView.swift` (NEW) - Toast views and OnboardingState
+- `WaypointApp.swift` - Progressive ornament visibility
+- `WaypointLeftOrnament.swift` - Progressive controls, settings submenu
+- `WaypointBottomOrnament.swift` - onChange for settings
+- `PortalListView.swift` - Toast overlays and onChange handlers
+- `CreateConstellationView.swift` - Portal picker, colors, icon names
+- `EditConstellationView.swift` - Color palette, icon options
+- `AddPortalView.swift` - Simplified validation, color palette
