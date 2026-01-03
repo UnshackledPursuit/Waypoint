@@ -488,10 +488,10 @@ private struct SettingsMenuToggle: View {
     var body: some View {
         VStack(spacing: 2) {
             if isExpanded {
-                // Appearance button
-                SettingsMenuButton(
+                // Appearance button (icon only)
+                SettingsIconButton(
                     icon: "slider.horizontal.3",
-                    label: "Appearance",
+                    helpText: "Appearance",
                     action: {
                         showAestheticPopover = true
                         scheduleCollapse()
@@ -506,10 +506,10 @@ private struct SettingsMenuToggle: View {
                     )
                 }
 
-                // Sort & Filter button
-                SettingsMenuButton(
+                // Sort & Filter button (icon only)
+                SettingsIconButton(
                     icon: "line.3.horizontal.decrease",
-                    label: "Sort & Filter",
+                    helpText: "Sort & Filter",
                     action: {
                         showFilterSortPopover = true
                         scheduleCollapse()
@@ -525,40 +525,32 @@ private struct SettingsMenuToggle: View {
 
                 // Ornament Settings submenu
                 if showOrnamentSettings {
-                    VStack(spacing: 2) {
-                        Text("Ornaments")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(.tertiary)
-                            .padding(.top, 4)
+                    // Left ornament toggle
+                    SettingsToggleRow(
+                        icon: "sidebar.left",
+                        helpText: leftAutoCollapse ? "Side: Auto-hide" : "Side: Visible",
+                        isOn: $leftAutoCollapse,
+                        onToggle: {
+                            scheduleCollapse()
+                            onInteraction?()
+                        }
+                    )
 
-                        // Left ornament toggle
-                        SettingsToggleRow(
-                            icon: "sidebar.left",
-                            helpText: leftAutoCollapse ? "Side: Auto-hide" : "Side: Visible",
-                            isOn: $leftAutoCollapse,
-                            onToggle: {
-                                scheduleCollapse()
-                                onInteraction?()
-                            }
-                        )
-
-                        // Bottom ornament toggle
-                        SettingsToggleRow(
-                            icon: "dock.rectangle",
-                            helpText: bottomAutoCollapse ? "Bottom: Auto-hide" : "Bottom: Visible",
-                            isOn: $bottomAutoCollapse,
-                            onToggle: {
-                                scheduleCollapse()
-                                onInteraction?()
-                            }
-                        )
-                    }
-                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    // Bottom ornament toggle
+                    SettingsToggleRow(
+                        icon: "dock.rectangle",
+                        helpText: bottomAutoCollapse ? "Bottom: Auto-hide" : "Bottom: Visible",
+                        isOn: $bottomAutoCollapse,
+                        onToggle: {
+                            scheduleCollapse()
+                            onInteraction?()
+                        }
+                    )
                 } else {
-                    // Ornament Settings button (collapsed)
-                    SettingsMenuButton(
+                    // Ornament Settings button (icon only)
+                    SettingsIconButton(
                         icon: "square.2.layers.3d",
-                        label: "Ornaments",
+                        helpText: "Ornaments",
                         action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 showOrnamentSettings = true
@@ -627,35 +619,27 @@ private struct SettingsMenuToggle: View {
     }
 }
 
-/// Button style for settings menu items
-private struct SettingsMenuButton: View {
+/// Icon-only button for settings menu (compact, matches ornament style)
+private struct SettingsIconButton: View {
     let icon: String
-    let label: String
+    let helpText: String
     let action: () -> Void
 
     @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 16)
-
-                Text(label)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.primary)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovering ? Color.white.opacity(0.15) : Color.clear)
-            )
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(isHovering ? .primary : .secondary)
+                .frame(width: 26, height: 26)
+                .background(
+                    Circle()
+                        .fill(isHovering ? Color.white.opacity(0.15) : Color.clear)
+                )
         }
         .buttonStyle(.plain)
+        .help(helpText)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
