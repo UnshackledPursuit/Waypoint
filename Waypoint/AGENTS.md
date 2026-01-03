@@ -167,6 +167,56 @@ git push origin --delete experiment/xxx
 
 ---
 
+## v1.0 Launch Roadmap (Jan 2026)
+
+### Ship-Ready Checklist
+
+| Category | Item | Status | Priority |
+|----------|------|--------|----------|
+| **Accessibility** | Reduced Motion Support | 🔴 TODO | Critical |
+| **Accessibility** | Haptic Feedback | 🔴 TODO | High |
+| **Accessibility** | Eye Gaze Verification | 🔴 TODO | Critical |
+| **Polish** | Sound Design | 🔴 TODO | Medium |
+| **Polish** | Glass Effect Consistency Audit | 🔴 TODO | High |
+| **UX** | Duplicate Link Magic Appear | 🔴 TODO | Medium |
+| **QA** | Link Features Audit (all packs) | 🔴 TODO | High |
+| **Feature** | Quick Add Redesign (trailing window) | 🔴 TODO | High |
+| **Branding** | App Intro Animation | 🔴 TODO | High |
+| **Branding** | Logo & Color Palette | 🔴 TODO | High |
+
+### Execution Order
+
+```
+Week 1: Foundation (Accessibility)
+├── Phase 1: Reduced Motion
+├── Phase 2: Haptic Feedback
+├── Phase 3: Eye Gaze Test + Fix
+└── Phase 7: Link Audit
+
+Week 2: Polish
+├── Phase 4: Sound Design
+├── Phase 5: Glass Audit & Consistency
+└── Phase 6: Duplicate UX (Magic Appear)
+
+Week 2.5: Quick Add Redesign
+├── Phase 8: Trailing Window for Portal Packs
+├── Quick URL modal (fast popup)
+└── Live constellation updates
+
+Week 3: Branding & Ship
+├── Phase 11: App Intro/Logo/Colors
+└── Final testing & App Store submission
+```
+
+### Post-Launch Roadmap
+
+| Version | Features |
+|---------|----------|
+| **v1.1** | Liquid Glass toggle, Compact card density option |
+| **v2.0** | Special Orb Types (Voice Note, Sticky Note, Scribble Pad, AI Chat, Document Folder), Siri-style Prismatic orbs, Appearance options toggle |
+
+---
+
 ## Future Feature Ideas (Backlog)
 These are ideas for post-v1 consideration. Do not implement unless explicitly requested.
 
@@ -182,6 +232,18 @@ These are ideas for post-v1 consideration. Do not implement unless explicitly re
   - Dense: Square/rectangle cards in grid layout
   - See `LiquidGlassOrbPreview.swift` for card prototypes
 - **Orb Visual Redesign:** Explore alternative orb rendering styles (current: 7-layer glass sphere). Options to investigate: Liquid Glass (visionOS 26), RealityKit 3D, simpler flat styles, custom shapes per portal type
+- **Siri-Style Prismatic Orb (v2):** Multi-color swirling orb inspired by Apple's Siri orb. Achievable with:
+  - `AngularGradient` for multi-color swirl (red/green/blue/purple blend)
+  - Animated rotation for swirl effect
+  - Boosted specular highlight (0.9 opacity vs current 0.7)
+  - Tinted rim light (cyan/purple gradient)
+  - ~80% achievable in SwiftUI; true 3D depth needs RealityKit
+  - See Siri orb reference in visionOS for target aesthetic
+- **Appearance Options Toggle (v2):** User-selectable orb styles:
+  - Classic (current 7-layer)
+  - Liquid Glass (simpler, system-native)
+  - Prismatic (Siri-inspired multi-color)
+  - See `LiquidGlassOrbPreview.swift` for prototypes
 - **Save Profile / Workspace Presets:** Allow users to save and restore portal/constellation setups
 - **Delete Constellation UI:** Add explicit delete option in constellation management
 - **Per-constellation layout overrides:** Allow users to override auto-layout per constellation
