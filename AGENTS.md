@@ -11,8 +11,15 @@
 4) `Docs/dev_standards.md`
 
 ## Optional reading
-- `Docs/WAYPOINT_ORB_WORMHOLE_SWAP_v1.md` (for Phase 6)
+- `Docs/VISIONOS_INTERACTION_PATTERNS.md` ← **UI patterns reference for enhancements**
+- `Docs/WAYPOINT_ORB_WORMHOLE_SWAP_v1.md` (for Wormhole Swap phase)
 - `Docs/REPO_WORKFLOW.md` (phase branches, PR checklist)
+
+## External Resources
+- **[Step Into Vision](https://stepinto.vision)** - Premier visionOS tutorials and news
+- [Apple visionOS Developer](https://developer.apple.com/visionos/) - Official documentation
+- [Swift with Majid](https://swiftwithmajid.com) - SwiftUI/visionOS tutorials
+- [Create with Swift](https://www.createwithswift.com) - visionOS implementation guides
 
 ---
 
@@ -23,7 +30,7 @@
 - **2-second rule:** User must be able to launch any portal in ~2 seconds.
 
 ## Current Status (Jan 2026)
-**Branch:** `feature/orb-smart-grid`
+**Branch:** `feature/orb-microactions-v2`
 
 ### ✅ COMPLETE
 - Phase 1: Drag & Drop upgrade (provider-based)
@@ -34,15 +41,15 @@
 - Phase 3.0+: Ornament auto-collapse & polish
 - **Onboarding Experience Overhaul (Jan 3, 2026)**
 - **Narrow Window / Smush Mode** (Jan 3, 2026)
+- **Focus Mode** (Jan 3, 2026)
+- **Tooltips for All Ornament Controls** (Jan 3, 2026)
 
-### ✅ RECENTLY COMPLETED
-- **Focus Mode** (Jan 3, 2026) - see details below
-- **Tooltips for All Ornament Controls** (Jan 3, 2026) - see details below
-
-### 🔴 NEXT
-- **Phase 6:** Wormhole Swap Animation
-- **Phase 7:** Universe View (strategic overview)
-- **Phase 8:** App Store Polish
+### 🔴 NEXT (Priority Order)
+1. **Orb Micro-Actions v2** - Enhanced menu UX (popover/context menu exploration)
+2. **Enhanced Hover States** - Glow, lift, label expansion on gaze
+3. **Wormhole Swap Animation** - Visual feedback for reordering
+4. **Universe View** - Strategic overview
+5. **App Store Polish** - Final refinements
 
 ## Key Files
 ### Views
@@ -362,3 +369,129 @@ private struct TabIconButton: View {
 ### Files Changed
 - `WaypointLeftOrnament.swift` - Added tooltips to all controls
 - `WaypointBottomOrnament.swift` - Added tooltips to all controls
+
+---
+
+## Orb Micro-Actions v2 (NEXT PHASE)
+
+### Problem Statement
+The current radial arc menu works but could benefit from:
+- More native visionOS patterns (popovers, context menus)
+- Enhanced hover feedback before long-press
+- Better discoverability for new users
+- Smoother, more elegant transitions
+
+### Current Implementation
+`PortalOrbView.swift` uses a custom radial arc layout:
+- Long-press triggers `showActions` state
+- Actions positioned in arc above orb
+- Custom animation with delay per action
+- Works but feels custom/non-native
+
+### Options to Explore
+
+#### Option A: Native Context Menu with Preview
+```swift
+.contextMenu {
+    Section("Open") {
+        Button("Open in Safari") { }
+        Button("Open in New Window") { }
+    }
+    Section("Edit") {
+        Button("Rename") { }
+        Button("Pin/Unpin") { }
+        Button("Add to Constellation") { }
+    }
+    Section {
+        Button("Delete", role: .destructive) { }
+    }
+} preview: {
+    PortalPreviewCard(portal: portal)
+}
+```
+**Pros:** Native feel, automatic styling, preview support
+**Cons:** Less visual flair, may feel generic
+
+#### Option B: Popover with Sections
+```swift
+.popover(isPresented: $showActions) {
+    VStack(spacing: 0) {
+        PortalHeader(portal: portal)
+        Divider()
+        ActionGrid(actions: primaryActions)
+        Divider()
+        ActionList(actions: secondaryActions)
+    }
+}
+```
+**Pros:** Rich content, extends beyond window, customizable
+**Cons:** More code, different interaction model
+
+#### Option C: Enhanced Radial + Hover
+Keep current radial but add:
+- Glow/lift effect on gaze (before long-press)
+- Quick action on single tap (open portal)
+- Radial only for secondary actions
+- Smoother spring animations
+
+**Pros:** Preserves unique identity, enhances existing
+**Cons:** Still non-native, more polish needed
+
+#### Option D: Hybrid Approach
+- **Tap:** Open portal immediately
+- **Gaze hover (1s):** Show mini preview tooltip
+- **Long-press:** Native context menu with full actions
+- **Two-finger tap:** Quick constellation add
+
+**Pros:** Multiple interaction depths, progressive disclosure
+**Cons:** Complex, learning curve
+
+### Recommended Approach
+Start with **Option C (Enhanced Radial + Hover)** because:
+1. Preserves Waypoint's unique visual identity
+2. Minimal code changes required
+3. Can add Option A as fallback later
+4. Aligns with existing design language
+
+### Implementation Plan
+
+#### Phase 1: Enhanced Hover Feedback
+1. Add `.hoverEffect(.lift)` to orb
+2. Add custom glow effect on hover
+3. Show portal name tooltip on hover
+4. Animate orb scale slightly on gaze
+
+#### Phase 2: Improved Radial Animation
+1. Smoother spring animations
+2. Staggered appearance with better timing
+3. Add subtle backdrop blur when open
+4. Better dismiss gesture (tap outside)
+
+#### Phase 3: Quick Actions
+1. Single tap = open portal (currently requires action button)
+2. Consider double-tap for pin toggle
+3. Add haptic feedback on interactions
+
+#### Phase 4: Context Menu Fallback
+1. Add `.contextMenu` as accessibility alternative
+2. Include all actions for keyboard/switch control users
+3. Add preview card to context menu
+
+### Files to Modify
+- `PortalOrbView.swift` - Primary changes
+- `OrbLinearField.swift` - May need hover coordination
+- `PortalListView.swift` - Mirror enhancements for consistency
+
+### Success Criteria
+- [ ] Hover shows subtle feedback before long-press
+- [ ] Radial menu animations feel native/polished
+- [ ] Single tap opens portal (no extra button needed)
+- [ ] Actions have tooltips
+- [ ] Context menu available as fallback
+- [ ] Consistent with visionOS design guidelines
+
+### Testing Notes
+- Test on device for hover effect accuracy
+- Verify 60pt touch target compliance
+- Test with reduced motion settings
+- Ensure accessibility with VoiceOver
