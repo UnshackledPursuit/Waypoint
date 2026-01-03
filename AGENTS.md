@@ -23,7 +23,7 @@
 - **2-second rule:** User must be able to launch any portal in ~2 seconds.
 
 ## Current Status (Jan 2026)
-**Branch:** `feature/orb-smart-grid`
+**Branch:** `feature/narrow-window-smush`
 
 ### ✅ COMPLETE
 - Phase 1: Drag & Drop upgrade (provider-based)
@@ -33,6 +33,9 @@
 - Phase 5: Adaptive layouts (both views auto-orient)
 - Phase 3.0+: Ornament auto-collapse & polish
 - **Onboarding Experience Overhaul (Jan 3, 2026)**
+
+### 🟡 IN PROGRESS
+- **Narrow Window / Smush Mode** (see detailed plan below)
 
 ### 🔴 NEXT
 - **Phase 6:** Wormhole Swap Animation
@@ -149,3 +152,123 @@ Collapsible settings submenu at bottom of left ornament:
 - `CreateConstellationView.swift` - Portal picker, colors, icon names
 - `EditConstellationView.swift` - Color palette, icon options
 - `AddPortalView.swift` - Simplified validation, color palette
+
+---
+
+## Narrow Window / Smush Mode Plan (Jan 3, 2026)
+
+### Problem Statement
+The Waypoint window cannot resize narrower than ~400pt width. Users want:
+1. **List view** to show icon-only when window is very narrow ("smush" mode)
+2. **Orb view** to support single-line vertical/horizontal strip layouts
+3. Window to resize freely down to ~150-200pt width
+
+### Root Cause Analysis
+
+#### Hard Constraints (Blockers)
+
+| File | Line | Constraint | Impact |
+|------|------|-----------|--------|
+| `WaypointLeftOrnament.swift` | 1113 | `.frame(minWidth: 400, minHeight: 500)` | **PRIMARY BLOCKER** - QuickAddSheet forces 400pt minimum |
+| `WaypointApp.swift` | 110 | `.defaultSize(width: 400, height: 600)` | Default window size (not hard limit) |
+
+#### Soft Constraints (Layout Issues)
+
+| File | Line | Constraint | Impact |
+|------|------|-----------|--------|
+| `OrbContainerView.swift` | 105 | `.padding(24)` | 48pt horizontal padding doesn't adapt |
+| `OrbLinearField.swift` | 146 | `.frame(minHeight: 150)` | Minimum container height |
+| `OrbLinearField.swift` | 87 | `orbItemWidth = orbSize * 1.7 + 8` | ~85pt per orb item (medium) |
+| `WaypointBottomOrnament.swift` | 120 | `.frame(maxWidth: 350)` | Constellation scroll area |
+
+#### Missing Features
+- **No icon-only mode** in list view - always shows text
+- **No strip mode** in orb view - no single-line scrollable layout
+- **Fixed padding** doesn't reduce for narrow windows
+- **No auto-collapse trigger** for ornaments at narrow widths
+
+### Implementation Plan
+
+#### Phase 1: Remove Hard Constraints
+**Files:** `WaypointLeftOrnament.swift`, `WaypointApp.swift`
+
+1. Reduce QuickAddSheet minWidth: `400pt → 280pt` (or make adaptive)
+2. Reduce default window size to `320pt` width
+3. Consider adding explicit minimum window hints
+
+#### Phase 2: Adaptive Padding
+**Files:** `OrbContainerView.swift`, `OrbLinearField.swift`
+
+Replace fixed `.padding(24)` with adaptive padding:
+```swift
+let adaptivePadding: CGFloat = {
+    if size.width < 200 { return 8 }
+    if size.width < 300 { return 16 }
+    return 24
+}()
+```
+
+OrbLinearField already has `effectivePadding` logic for `isNarrow` - extend this pattern.
+
+#### Phase 3: Icon-Only "Smush" Mode for List View
+**Files:** `PortalListView.swift`, `PortalRow.swift` (or new `PortalIconRow.swift`)
+
+1. Add `@AppStorage("listDisplayMode")` with values: `full`, `compact`, `iconOnly`
+2. Auto-switch to `iconOnly` when `width < 180pt`
+3. Create `PortalIconOnlyRow` component:
+   - Shows just the orb/icon (no text)
+   - Tap to open, long-press for micro-actions
+   - Optional: horizontal scroll strip at extreme widths
+4. Layout detection in `calculateListLayout()`:
+   ```swift
+   if width < 180 {
+       return ListLayout(columns: 1, isCompact: true, isIconOnly: true)
+   }
+   ```
+
+#### Phase 4: Orb View Narrow Strip Mode
+**Files:** `OrbLinearField.swift`, `OrbLayoutEngine.swift`
+
+1. Detect "strip" mode when:
+   - Portrait: width < 150pt
+   - Landscape: height < 150pt
+2. Strip mode behavior:
+   - Single line of orbs (scrollable)
+   - Auto-switch to smallest orb size
+   - Minimal padding (8pt)
+   - Hide section headers
+3. Update `OrbLayoutEngine.orientation()` to return `.strip` for extreme dimensions
+
+#### Phase 5: Auto-Collapse Ornaments at Narrow Widths
+**Files:** `WaypointApp.swift`, `WaypointBottomOrnament.swift`
+
+1. Add width observer to WaypointApp
+2. Auto-collapse bottom ornament when width < 250pt
+3. Show minimal expand indicator when collapsed
+4. Already have `@AppStorage("bottomOrnamentAutoCollapse")` mechanism to leverage
+
+### Key Files to Modify
+
+| File | Changes |
+|------|---------|
+| `WaypointApp.swift` | Reduce default size, add width observer for auto-collapse |
+| `WaypointLeftOrnament.swift` | Reduce QuickAddSheet minWidth |
+| `OrbContainerView.swift` | Adaptive padding based on width |
+| `OrbLinearField.swift` | Strip mode, smaller minimums, extend isNarrow logic |
+| `OrbLayoutEngine.swift` | Add `.strip` orientation detection |
+| `PortalListView.swift` | Icon-only mode detection and rendering |
+| `PortalRow.swift` | Icon-only variant or new component |
+
+### Success Criteria
+- [ ] Window resizes smoothly down to ~150pt width
+- [ ] List view shows icon-only at narrow widths
+- [ ] Orb view shows scrollable strip at narrow widths
+- [ ] Padding adapts gracefully
+- [ ] Bottom ornament auto-collapses when too narrow
+- [ ] QuickAddSheet works at reduced width
+
+### Testing Notes
+- Test on visionOS simulator with window resize handles
+- Test both portrait and landscape orientations
+- Test with 1, 5, 10, 20+ portals
+- Verify micro-actions still work in icon-only mode
