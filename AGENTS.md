@@ -113,6 +113,45 @@
 - List of files touched
 - Any known risks / next tests for the user to run
 
+## Branch Management (IMPORTANT)
+
+### After Merging a Feature Branch
+Every merge MUST be followed by cleanup:
+
+```bash
+# 1. Verify merge is complete
+git branch --merged main  # your branch should appear
+
+# 2. Delete local branch
+git branch -d feature/xxx
+
+# 3. Delete remote branch
+git push origin --delete feature/xxx
+
+# 4. Update documentation (AGENTS.md, PROJECT_STATUS, BRANCH_STATUS)
+```
+
+### For Abandoned Experiments
+If abandoning experimental work but want to preserve for future reference:
+
+```bash
+# Archive via tag (preserves code without cluttering branches)
+git tag archive/experiment-name origin/experiment/xxx
+git push origin archive/experiment-name
+git push origin --delete experiment/xxx
+```
+
+If discarding entirely (code will be lost):
+```bash
+git push origin --delete experiment/xxx
+```
+
+### Branch Policy
+- **Only `main` should exist long-term**
+- Feature branches are temporary - delete after merge
+- Never keep merged branches "just in case" - history is preserved in main
+- Archive experiments via tags if code might be useful later
+
 ---
 
 ## Future Feature Ideas (Backlog)
