@@ -45,11 +45,35 @@
 - **Tooltips for All Ornament Controls** (Jan 3, 2026)
 
 ### 🔴 NEXT (Priority Order)
-1. **Orb Micro-Actions v2** - Enhanced menu UX (popover/context menu exploration)
-2. **Enhanced Hover States** - Glow, lift, label expansion on gaze
-3. **Wormhole Swap Animation** - Visual feedback for reordering
-4. **Universe View** - Strategic overview
-5. **App Store Polish** - Final refinements
+
+#### Phase A: Core Interaction Polish
+1. **Orb Micro-Actions v2** - Enhanced menu UX, hover feedback, tap-to-open
+2. **Enhanced Hover States** - Glow, lift, label expansion on gaze (like tab bars)
+3. **Popover from Ornament** - Quick actions without leaving context
+
+#### Phase B: UX Refinements
+4. **Haptic Feedback** - Subtle haptics on orb interactions
+5. **Sound Design** - Audio cues on open/close/select
+6. **Reduced Motion Support** - Accessibility alternatives
+
+#### Phase C: Advanced Features
+7. **Quick Start Portal Groups Enhancement** - Inspector/auxiliary window, live editing
+8. **Spatial Widgets** (visionOS 26) - Waypoint widget snaps to walls/tables
+9. **"Look to Scroll"** - For long portal lists
+
+#### Phase D: Final Polish
+10. **Liquid Glass Adoption** - Update sheets/inspectors when ready
+11. **Custom Hover for Constellations** - Expand to show portal thumbnails
+12. **3D Depth Effects** - Subtle z-offset for selected/active states
+13. **Universe View** - Strategic overview
+14. **App Store Polish** - Final refinements
+
+### 🔵 DEFERRED (Not Now)
+- **Wormhole Swap Animation** - Visual reordering feedback (nice-to-have)
+- **Full Space Experiences** - Immersive mode
+- **RealityKit 3D Orbs** - Volumetric orb rendering
+- **Spatial Anchoring** - Lock to surfaces
+- **Hand Tracking Custom Gestures** - ARKit hand skeleton
 
 ## Key Files
 ### Views
