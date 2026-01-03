@@ -67,9 +67,6 @@ struct WaypointLeftOrnament: View {
     @State private var showCreateConstellation = false
     @State private var constellationToEdit: Constellation?
     @State private var showConstellationPopover = false
-    @State private var showAestheticPopover = false
-    @State private var showFilterSortPopover = false
-    @State private var showOrnamentPopover = false
 
     /// Whether the ornament is expanded (showing all controls)
     @State private var isExpanded = true
@@ -209,9 +206,6 @@ struct WaypointLeftOrnament: View {
                         colorMode: orbColorMode,
                         orbSize: orbSize,
                         focusMode: $focusMode,
-                        showAestheticPopover: $showAestheticPopover,
-                        showFilterSortPopover: $showFilterSortPopover,
-                        showOrnamentPopover: $showOrnamentPopover,
                         onInteraction: scheduleCollapse
                     )
                     .environment(navigationState)
@@ -474,9 +468,6 @@ private struct SettingsMenuToggle: View {
     @Binding var colorMode: OrbColorMode
     @Binding var orbSize: OrbSize
     @Binding var focusMode: Bool
-    @Binding var showAestheticPopover: Bool
-    @Binding var showFilterSortPopover: Bool
-    @Binding var showOrnamentPopover: Bool
     var onInteraction: (() -> Void)? = nil
 
     @Environment(NavigationState.self) private var navigationState
@@ -484,56 +475,66 @@ private struct SettingsMenuToggle: View {
     @Environment(PortalManager.self) private var portalManager
 
     @State private var isExpanded = false
+    @State private var showAestheticPopover = false
+    @State private var showFilterSortPopover = false
+    @State private var showOrnamentPopover = false
 
     var body: some View {
         VStack(spacing: 2) {
-            if isExpanded {
-                // Appearance button (icon only)
-                SettingsIconButton(
-                    icon: "slider.horizontal.3",
-                    helpText: "Appearance",
-                    action: {
-                        showAestheticPopover = true
-                        onInteraction?()
-                    }
-                )
-                .popover(isPresented: $showAestheticPopover, arrowEdge: .trailing) {
-                    AestheticPopover(
-                        intensity: $intensity,
-                        colorMode: $colorMode,
-                        orbSize: $orbSize
-                    )
+            // Appearance button (icon only)
+            SettingsIconButton(
+                icon: "slider.horizontal.3",
+                helpText: "Appearance",
+                action: {
+                    showAestheticPopover = true
+                    onInteraction?()
                 }
-
-                // Sort & Filter button (icon only)
-                SettingsIconButton(
-                    icon: "line.3.horizontal.decrease",
-                    helpText: "Sort & Filter",
-                    action: {
-                        showFilterSortPopover = true
-                        onInteraction?()
-                    }
+            )
+            .popover(isPresented: $showAestheticPopover, arrowEdge: .trailing) {
+                AestheticPopover(
+                    intensity: $intensity,
+                    colorMode: $colorMode,
+                    orbSize: $orbSize
                 )
-                .popover(isPresented: $showFilterSortPopover, arrowEdge: .trailing) {
-                    FilterSortPopover()
-                        .environment(navigationState)
-                        .environment(constellationManager)
-                        .environment(portalManager)
-                }
-
-                // Ornament Settings button (icon only) - opens popover
-                SettingsIconButton(
-                    icon: "square.2.layers.3d",
-                    helpText: "Ornaments",
-                    action: {
-                        showOrnamentPopover = true
-                        onInteraction?()
-                    }
-                )
-                .popover(isPresented: $showOrnamentPopover, arrowEdge: .trailing) {
-                    OrnamentSettingsPopover(focusMode: $focusMode)
-                }
             }
+            .frame(height: isExpanded ? nil : 0)
+            .opacity(isExpanded ? 1 : 0)
+            .clipped()
+
+            // Sort & Filter button (icon only)
+            SettingsIconButton(
+                icon: "line.3.horizontal.decrease",
+                helpText: "Sort & Filter",
+                action: {
+                    showFilterSortPopover = true
+                    onInteraction?()
+                }
+            )
+            .popover(isPresented: $showFilterSortPopover, arrowEdge: .trailing) {
+                FilterSortPopover()
+                    .environment(navigationState)
+                    .environment(constellationManager)
+                    .environment(portalManager)
+            }
+            .frame(height: isExpanded ? nil : 0)
+            .opacity(isExpanded ? 1 : 0)
+            .clipped()
+
+            // Ornament Settings button (icon only) - opens popover
+            SettingsIconButton(
+                icon: "square.2.layers.3d",
+                helpText: "Ornaments",
+                action: {
+                    showOrnamentPopover = true
+                    onInteraction?()
+                }
+            )
+            .popover(isPresented: $showOrnamentPopover, arrowEdge: .trailing) {
+                OrnamentSettingsPopover(focusMode: $focusMode)
+            }
+            .frame(height: isExpanded ? nil : 0)
+            .opacity(isExpanded ? 1 : 0)
+            .clipped()
 
             // Settings gear - toggles expanded state
             Button {
