@@ -484,7 +484,6 @@ private struct SettingsMenuToggle: View {
     @Environment(PortalManager.self) private var portalManager
 
     @State private var isExpanded = false
-    @State private var collapseWorkItem: DispatchWorkItem?
 
     var body: some View {
         VStack(spacing: 2) {
@@ -495,7 +494,6 @@ private struct SettingsMenuToggle: View {
                     helpText: "Appearance",
                     action: {
                         showAestheticPopover = true
-                        scheduleCollapse()
                         onInteraction?()
                     }
                 )
@@ -513,7 +511,6 @@ private struct SettingsMenuToggle: View {
                     helpText: "Sort & Filter",
                     action: {
                         showFilterSortPopover = true
-                        scheduleCollapse()
                         onInteraction?()
                     }
                 )
@@ -530,48 +527,32 @@ private struct SettingsMenuToggle: View {
                     helpText: "Ornaments",
                     action: {
                         showOrnamentPopover = true
-                        scheduleCollapse()
                         onInteraction?()
                     }
                 )
                 .popover(isPresented: $showOrnamentPopover, arrowEdge: .trailing) {
                     OrnamentSettingsPopover(focusMode: $focusMode)
                 }
-
-                // Close button
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isExpanded = false
-                    }
-                    onInteraction?()
-                } label: {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(.green)
-                        .frame(width: 26, height: 26)
-                }
-                .buttonStyle(.plain)
-            } else {
-                // Collapsed: show settings gear icon
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isExpanded = true
-                    }
-                    scheduleCollapse()
-                    onInteraction?()
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 26, height: 26)
-                        .background(
-                            Circle()
-                                .fill(Color.secondary.opacity(0.15))
-                        )
-                }
-                .buttonStyle(.plain)
-                .help("Settings")
             }
+
+            // Settings gear - toggles expanded state
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+                onInteraction?()
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(isExpanded ? .primary : .secondary)
+                    .frame(width: 26, height: 26)
+                    .background(
+                        Circle()
+                            .fill(isExpanded ? Color.white.opacity(0.2) : Color.secondary.opacity(0.15))
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Settings")
         }
         .padding(3)
         .background(
@@ -579,17 +560,6 @@ private struct SettingsMenuToggle: View {
                 .fill(Color.secondary.opacity(0.15))
         )
         .animation(.easeInOut(duration: 0.2), value: isExpanded)
-    }
-
-    private func scheduleCollapse() {
-        collapseWorkItem?.cancel()
-        let workItem = DispatchWorkItem {
-            withAnimation {
-                isExpanded = false
-            }
-        }
-        collapseWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0, execute: workItem)
     }
 }
 
