@@ -153,48 +153,6 @@ struct WaypointLeftOrnament: View {
                     }
                 )
 
-                // Aesthetic controls - only show after 10 portals + 1 constellation
-                if showAdvancedControls {
-                    // Divider before appearance controls
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.3))
-                        .frame(width: 20, height: 1)
-                        .padding(.vertical, 2)
-
-                    // Appearance popover button
-                    TabIconButton(
-                        icon: "slider.horizontal.3",
-                        helpText: "Appearance",
-                        action: {
-                            showAestheticPopover.toggle()
-                            scheduleCollapse()
-                        }
-                    )
-                    .popover(isPresented: $showAestheticPopover, arrowEdge: .trailing) {
-                        AestheticPopover(
-                            intensity: $orbIntensity,
-                            colorMode: orbColorMode,
-                            orbSize: orbSize
-                        )
-                    }
-
-                    // Filter/Sort popover button
-                    TabIconButton(
-                        icon: "line.3.horizontal.decrease",
-                        helpText: "Sort & Filter",
-                        action: {
-                            showFilterSortPopover.toggle()
-                            scheduleCollapse()
-                        }
-                    )
-                    .popover(isPresented: $showFilterSortPopover, arrowEdge: .trailing) {
-                        FilterSortPopover()
-                            .environment(navigationState)
-                            .environment(constellationManager)
-                            .environment(portalManager)
-                    }
-                }
-
                 // Divider before constellation controls
                 Rectangle()
                     .fill(Color.secondary.opacity(0.3))
@@ -238,14 +196,24 @@ struct WaypointLeftOrnament: View {
                     .environment(portalManager)
                 }
 
-                // Ornament settings (only for power users)
+                // Settings menu (only for power users) - contains Appearance, Sort & Filter, Ornament Settings
                 if showAdvancedControls {
                     Rectangle()
                         .fill(Color.secondary.opacity(0.3))
                         .frame(width: 20, height: 1)
                         .padding(.vertical, 2)
 
-                    OrnamentSettingsToggle(onInteraction: scheduleCollapse)
+                    SettingsMenuToggle(
+                        intensity: $orbIntensity,
+                        colorMode: orbColorMode,
+                        orbSize: orbSize,
+                        showAestheticPopover: $showAestheticPopover,
+                        showFilterSortPopover: $showFilterSortPopover,
+                        onInteraction: scheduleCollapse
+                    )
+                    .environment(navigationState)
+                    .environment(constellationManager)
+                    .environment(portalManager)
                 }
 
                 #if DEBUG
@@ -495,13 +463,23 @@ private struct TabIconButton: View {
     }
 }
 
-// MARK: - Ornament Settings Toggle
+// MARK: - Settings Menu Toggle
 
-/// Collapsible submenu for ornament auto-collapse settings
-private struct OrnamentSettingsToggle: View {
+/// Unified settings menu containing Appearance, Sort & Filter, and Ornament Settings
+private struct SettingsMenuToggle: View {
+    @Binding var intensity: Double
+    @Binding var colorMode: OrbColorMode
+    @Binding var orbSize: OrbSize
+    @Binding var showAestheticPopover: Bool
+    @Binding var showFilterSortPopover: Bool
     var onInteraction: (() -> Void)? = nil
 
+    @Environment(NavigationState.self) private var navigationState
+    @Environment(ConstellationManager.self) private var constellationManager
+    @Environment(PortalManager.self) private var portalManager
+
     @State private var isExpanded = false
+    @State private var showOrnamentSettings = false
     @State private var collapseWorkItem: DispatchWorkItem?
 
     @AppStorage("leftOrnamentAutoCollapse") private var leftAutoCollapse: Bool = false
@@ -510,31 +488,93 @@ private struct OrnamentSettingsToggle: View {
     var body: some View {
         VStack(spacing: 2) {
             if isExpanded {
-                // Left ornament toggle (no slash = stays visible, slash = will auto-hide)
-                SettingsToggleRow(
-                    icon: "sidebar.left",
-                    helpText: leftAutoCollapse ? "Side: Auto-hide ON" : "Side: Always Visible",
-                    isOn: $leftAutoCollapse,
-                    onToggle: {
+                // Appearance button
+                SettingsMenuButton(
+                    icon: "slider.horizontal.3",
+                    label: "Appearance",
+                    action: {
+                        showAestheticPopover = true
                         scheduleCollapse()
                         onInteraction?()
                     }
                 )
+                .popover(isPresented: $showAestheticPopover, arrowEdge: .trailing) {
+                    AestheticPopover(
+                        intensity: $intensity,
+                        colorMode: $colorMode,
+                        orbSize: $orbSize
+                    )
+                }
 
-                // Bottom ornament toggle
-                SettingsToggleRow(
-                    icon: "dock.rectangle",
-                    helpText: bottomAutoCollapse ? "Bottom: Auto-hide ON" : "Bottom: Always Visible",
-                    isOn: $bottomAutoCollapse,
-                    onToggle: {
+                // Sort & Filter button
+                SettingsMenuButton(
+                    icon: "line.3.horizontal.decrease",
+                    label: "Sort & Filter",
+                    action: {
+                        showFilterSortPopover = true
                         scheduleCollapse()
                         onInteraction?()
                     }
                 )
+                .popover(isPresented: $showFilterSortPopover, arrowEdge: .trailing) {
+                    FilterSortPopover()
+                        .environment(navigationState)
+                        .environment(constellationManager)
+                        .environment(portalManager)
+                }
+
+                // Ornament Settings submenu
+                if showOrnamentSettings {
+                    VStack(spacing: 2) {
+                        Text("Ornaments")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.tertiary)
+                            .padding(.top, 4)
+
+                        // Left ornament toggle
+                        SettingsToggleRow(
+                            icon: "sidebar.left",
+                            helpText: leftAutoCollapse ? "Side: Auto-hide" : "Side: Visible",
+                            isOn: $leftAutoCollapse,
+                            onToggle: {
+                                scheduleCollapse()
+                                onInteraction?()
+                            }
+                        )
+
+                        // Bottom ornament toggle
+                        SettingsToggleRow(
+                            icon: "dock.rectangle",
+                            helpText: bottomAutoCollapse ? "Bottom: Auto-hide" : "Bottom: Visible",
+                            isOn: $bottomAutoCollapse,
+                            onToggle: {
+                                scheduleCollapse()
+                                onInteraction?()
+                            }
+                        )
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                } else {
+                    // Ornament Settings button (collapsed)
+                    SettingsMenuButton(
+                        icon: "square.2.layers.3d",
+                        label: "Ornaments",
+                        action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showOrnamentSettings = true
+                            }
+                            scheduleCollapse()
+                            onInteraction?()
+                        }
+                    )
+                }
 
                 // Close button
                 Button {
-                    isExpanded = false
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isExpanded = false
+                        showOrnamentSettings = false
+                    }
                     onInteraction?()
                 } label: {
                     Image(systemName: "checkmark.circle.fill")
@@ -544,9 +584,11 @@ private struct OrnamentSettingsToggle: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                // Collapsed: show settings icon
+                // Collapsed: show settings gear icon
                 Button {
-                    isExpanded = true
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isExpanded = true
+                    }
                     scheduleCollapse()
                     onInteraction?()
                 } label: {
@@ -560,7 +602,7 @@ private struct OrnamentSettingsToggle: View {
                         )
                 }
                 .buttonStyle(.plain)
-                .help("Ornament Settings")
+                .help("Settings")
             }
         }
         .padding(3)
@@ -569,6 +611,7 @@ private struct OrnamentSettingsToggle: View {
                 .fill(Color.secondary.opacity(0.15))
         )
         .animation(.easeInOut(duration: 0.2), value: isExpanded)
+        .animation(.easeInOut(duration: 0.2), value: showOrnamentSettings)
     }
 
     private func scheduleCollapse() {
@@ -576,10 +619,48 @@ private struct OrnamentSettingsToggle: View {
         let workItem = DispatchWorkItem {
             withAnimation {
                 isExpanded = false
+                showOrnamentSettings = false
             }
         }
         collapseWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0, execute: workItem)
+    }
+}
+
+/// Button style for settings menu items
+private struct SettingsMenuButton: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.primary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovering ? Color.white.opacity(0.15) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
     }
 }
 
