@@ -69,6 +69,7 @@ struct WaypointLeftOrnament: View {
     @State private var showConstellationPopover = false
     @State private var showAestheticPopover = false
     @State private var showFilterSortPopover = false
+    @State private var showOrnamentPopover = false
 
     /// Whether the ornament is expanded (showing all controls)
     @State private var isExpanded = true
@@ -207,8 +208,10 @@ struct WaypointLeftOrnament: View {
                         intensity: $orbIntensity,
                         colorMode: orbColorMode,
                         orbSize: orbSize,
+                        focusMode: $focusMode,
                         showAestheticPopover: $showAestheticPopover,
                         showFilterSortPopover: $showFilterSortPopover,
+                        showOrnamentPopover: $showOrnamentPopover,
                         onInteraction: scheduleCollapse
                     )
                     .environment(navigationState)
@@ -470,8 +473,10 @@ private struct SettingsMenuToggle: View {
     @Binding var intensity: Double
     @Binding var colorMode: OrbColorMode
     @Binding var orbSize: OrbSize
+    @Binding var focusMode: Bool
     @Binding var showAestheticPopover: Bool
     @Binding var showFilterSortPopover: Bool
+    @Binding var showOrnamentPopover: Bool
     var onInteraction: (() -> Void)? = nil
 
     @Environment(NavigationState.self) private var navigationState
@@ -479,11 +484,7 @@ private struct SettingsMenuToggle: View {
     @Environment(PortalManager.self) private var portalManager
 
     @State private var isExpanded = false
-    @State private var showOrnamentSettings = false
     @State private var collapseWorkItem: DispatchWorkItem?
-
-    @AppStorage("leftOrnamentAutoCollapse") private var leftAutoCollapse: Bool = false
-    @AppStorage("bottomOrnamentAutoCollapse") private var bottomAutoCollapse: Bool = false
 
     var body: some View {
         VStack(spacing: 2) {
@@ -523,49 +524,24 @@ private struct SettingsMenuToggle: View {
                         .environment(portalManager)
                 }
 
-                // Ornament Settings submenu
-                if showOrnamentSettings {
-                    // Left ornament toggle
-                    SettingsToggleRow(
-                        icon: "sidebar.left",
-                        helpText: leftAutoCollapse ? "Side: Auto-hide" : "Side: Visible",
-                        isOn: $leftAutoCollapse,
-                        onToggle: {
-                            scheduleCollapse()
-                            onInteraction?()
-                        }
-                    )
-
-                    // Bottom ornament toggle
-                    SettingsToggleRow(
-                        icon: "dock.rectangle",
-                        helpText: bottomAutoCollapse ? "Bottom: Auto-hide" : "Bottom: Visible",
-                        isOn: $bottomAutoCollapse,
-                        onToggle: {
-                            scheduleCollapse()
-                            onInteraction?()
-                        }
-                    )
-                } else {
-                    // Ornament Settings button (icon only)
-                    SettingsIconButton(
-                        icon: "square.2.layers.3d",
-                        helpText: "Ornaments",
-                        action: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                showOrnamentSettings = true
-                            }
-                            scheduleCollapse()
-                            onInteraction?()
-                        }
-                    )
+                // Ornament Settings button (icon only) - opens popover
+                SettingsIconButton(
+                    icon: "square.2.layers.3d",
+                    helpText: "Ornaments",
+                    action: {
+                        showOrnamentPopover = true
+                        scheduleCollapse()
+                        onInteraction?()
+                    }
+                )
+                .popover(isPresented: $showOrnamentPopover, arrowEdge: .trailing) {
+                    OrnamentSettingsPopover(focusMode: $focusMode)
                 }
 
                 // Close button
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isExpanded = false
-                        showOrnamentSettings = false
                     }
                     onInteraction?()
                 } label: {
@@ -603,7 +579,6 @@ private struct SettingsMenuToggle: View {
                 .fill(Color.secondary.opacity(0.15))
         )
         .animation(.easeInOut(duration: 0.2), value: isExpanded)
-        .animation(.easeInOut(duration: 0.2), value: showOrnamentSettings)
     }
 
     private func scheduleCollapse() {
@@ -611,11 +586,181 @@ private struct SettingsMenuToggle: View {
         let workItem = DispatchWorkItem {
             withAnimation {
                 isExpanded = false
-                showOrnamentSettings = false
             }
         }
         collapseWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.0, execute: workItem)
+    }
+}
+
+// MARK: - Ornament Settings Popover
+
+/// Popover for ornament visibility and focus mode settings
+/// Includes descriptions to educate users on each option
+private struct OrnamentSettingsPopover: View {
+    @Binding var focusMode: Bool
+
+    @AppStorage("leftOrnamentAutoCollapse") private var leftAutoCollapse: Bool = false
+    @AppStorage("bottomOrnamentAutoCollapse") private var bottomAutoCollapse: Bool = false
+
+    /// Track which setting was last changed for footer description
+    @State private var lastChanged: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                Image(systemName: "square.2.layers.3d")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("Ornaments")
+                    .font(.system(size: 14, weight: .semibold))
+                Spacer()
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+
+            Divider()
+                .padding(.horizontal, 12)
+
+            // Content
+            VStack(alignment: .leading, spacing: 12) {
+                // Focus Mode
+                OrnamentSettingRow(
+                    icon: "eye",
+                    slashWhenOn: true,
+                    label: "Focus Mode",
+                    description: "Hide all controls",
+                    isOn: $focusMode,
+                    onChange: { lastChanged = "focus" }
+                )
+
+                Divider()
+                    .padding(.horizontal, 4)
+
+                // Auto-hide section label
+                Text("Auto-Hide")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 2)
+
+                // Left ornament
+                OrnamentSettingRow(
+                    icon: "sidebar.left",
+                    slashWhenOn: true,
+                    label: "Side Panel",
+                    description: "Left controls",
+                    isOn: $leftAutoCollapse,
+                    onChange: { lastChanged = "left" }
+                )
+
+                // Bottom ornament
+                OrnamentSettingRow(
+                    icon: "dock.rectangle",
+                    slashWhenOn: true,
+                    label: "Bottom Bar",
+                    description: "Filters & constellations",
+                    isOn: $bottomAutoCollapse,
+                    onChange: { lastChanged = "bottom" }
+                )
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+
+            // Footer - contextual description
+            Divider()
+                .padding(.horizontal, 12)
+
+            Text(footerDescription)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+        }
+        .frame(width: 200)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var footerDescription: String {
+        switch lastChanged {
+        case "focus":
+            return focusMode ? "Controls hidden. Hover edges to reveal." : "All controls visible"
+        case "left":
+            return leftAutoCollapse ? "Side panel auto-hides after 8s" : "Side panel stays visible"
+        case "bottom":
+            return bottomAutoCollapse ? "Bottom bar auto-hides after 8s" : "Bottom bar stays visible"
+        default:
+            return "Configure panel visibility"
+        }
+    }
+}
+
+/// Row for ornament setting with icon, label, description, and toggle
+private struct OrnamentSettingRow: View {
+    let icon: String
+    var slashWhenOn: Bool = false
+    let label: String
+    let description: String
+    @Binding var isOn: Bool
+    var onChange: (() -> Void)? = nil
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+            onChange?()
+        } label: {
+            HStack(spacing: 10) {
+                // Icon with optional slash overlay
+                ZStack {
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(isOn && slashWhenOn ? .secondary : .primary)
+
+                    if isOn && slashWhenOn {
+                        Rectangle()
+                            .fill(Color.secondary)
+                            .frame(width: 2, height: 18)
+                            .rotationEffect(.degrees(45))
+                    }
+                }
+                .frame(width: 24)
+
+                // Label and description
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(label)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.primary)
+
+                    Text(description)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+
+                Spacer()
+
+                // Toggle indicator
+                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 16))
+                    .foregroundStyle(isOn ? .green : .secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovering ? Color.white.opacity(0.1) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
     }
 }
 
@@ -645,47 +790,6 @@ private struct SettingsIconButton: View {
                 isHovering = hovering
             }
         }
-    }
-}
-
-/// Toggle row for settings - shows ornament icon with slash when auto-collapse is ON
-private struct SettingsToggleRow: View {
-    let icon: String
-    var helpText: String? = nil
-    @Binding var isOn: Bool
-    var onToggle: (() -> Void)? = nil
-
-    var body: some View {
-        Button {
-            isOn.toggle()
-            onToggle?()
-        } label: {
-            ZStack {
-                // Main icon
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(isOn ? .secondary : .primary)
-
-                // Slash overlay when auto-collapse is ON (will hide)
-                if isOn {
-                    Rectangle()
-                        .fill(Color.secondary)
-                        .frame(width: 2, height: 20)
-                        .rotationEffect(.degrees(45))
-                }
-            }
-            .frame(width: 32, height: 32)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isOn ? Color.secondary.opacity(0.1) : Color.white.opacity(0.15))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isOn ? Color.clear : Color.white.opacity(0.3), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .help(helpText ?? "")
     }
 }
 
