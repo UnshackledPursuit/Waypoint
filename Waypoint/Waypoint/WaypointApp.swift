@@ -113,7 +113,8 @@ struct WaypointApp: App {
                 }
             }
             // Focus mode reveal button - shows when ornaments are hidden
-            .overlay(alignment: .bottomLeading) {
+            // Positioned top left to avoid window drag handle interference
+            .overlay(alignment: .topLeading) {
                 if shouldHideOrnaments && !temporaryOrnamentReveal {
                     FocusModeRevealButton {
                         revealOrnamentsTemporarily()

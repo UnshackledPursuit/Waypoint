@@ -620,6 +620,12 @@ private struct AestheticPopover: View {
     /// Ordered color modes: Mono, Portal, Frost, Group (left to right)
     private let colorModeOrder: [OrbColorMode] = [.mono, .defaultStyle, .frost, .constellation]
 
+    /// Maximum intensity value (1.5 = 150% for boost effect)
+    private let maxIntensity: Double = 1.5
+
+    /// Boost accent color (black/dark for subtle emphasis)
+    private let boostColor = Color(white: 0.15)
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
@@ -648,14 +654,14 @@ private struct AestheticPopover: View {
                         .padding(.horizontal, 2)
 
                     HStack(spacing: 10) {
-                        // Low vibrancy icon (moon = dim)
+                        // Low vibrancy icon (dim)
                         Button {
                             withAnimation(.spring(response: 0.3)) {
                                 intensity = 0.0
                                 switchToColorModeIfNeeded()
                             }
                         } label: {
-                            Image(systemName: "moon.fill")
+                            Image(systemName: "circle.dotted")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(intensity < 0.2 ? .white : .secondary)
                                 .frame(width: 24, height: 24)
@@ -666,58 +672,69 @@ private struct AestheticPopover: View {
                         }
                         .buttonStyle(.plain)
 
-                        // Slider
+                        // Slider - supports 0 to 1.5 (150% boost)
                         GeometryReader { geo in
+                            let normalizedIntensity = intensity / maxIntensity
+                            let normalPoint = 1.0 / maxIntensity // Where 100% sits on the slider
+
                             ZStack(alignment: .leading) {
                                 // Track
                                 Capsule()
                                     .fill(Color.secondary.opacity(0.2))
                                     .frame(height: 6)
 
-                                // Fill - neutral gradient
+                                // Fill - gradient with boost zone
                                 Capsule()
                                     .fill(
                                         LinearGradient(
-                                            colors: [.secondary.opacity(0.3), .white.opacity(0.8)],
+                                            colors: intensity > 1.0
+                                                ? [.secondary.opacity(0.3), .white.opacity(0.8), boostColor.opacity(0.6)]
+                                                : [.secondary.opacity(0.3), .white.opacity(0.8)],
                                             startPoint: .leading,
                                             endPoint: .trailing
                                         )
                                     )
-                                    .frame(width: max(6, geo.size.width * intensity), height: 6)
+                                    .frame(width: max(6, geo.size.width * normalizedIntensity), height: 6)
+
+                                // 100% marker (subtle tick)
+                                Rectangle()
+                                    .fill(Color.white.opacity(0.4))
+                                    .frame(width: 1, height: 10)
+                                    .offset(x: geo.size.width * normalPoint - 0.5)
 
                                 // Thumb
                                 Circle()
-                                    .fill(.white)
+                                    .fill(intensity > 1.0 ? boostColor : .white)
                                     .frame(width: 18, height: 18)
                                     .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
-                                    .offset(x: (geo.size.width - 18) * intensity)
+                                    .offset(x: (geo.size.width - 18) * normalizedIntensity)
                             }
                             .contentShape(Rectangle())
                             .gesture(
                                 DragGesture(minimumDistance: 0)
                                     .onChanged { value in
-                                        let newValue = value.location.x / geo.size.width
-                                        intensity = min(max(newValue, 0), 1)
+                                        let newValue = (value.location.x / geo.size.width) * maxIntensity
+                                        intensity = min(max(newValue, 0), maxIntensity)
                                         switchToColorModeIfNeeded()
                                     }
                             )
                         }
                         .frame(height: 24)
 
-                        // Sun icon
+                        // High vibrancy icon (boost)
                         Button {
                             withAnimation(.spring(response: 0.3)) {
-                                intensity = 1.0
+                                intensity = maxIntensity
                                 switchToColorModeIfNeeded()
                             }
                         } label: {
                             Image(systemName: "sun.max.fill")
                                 .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(intensity > 0.8 ? .white : .secondary)
+                                .foregroundStyle(intensity > 1.2 ? boostColor : (intensity > 0.8 ? .white : .secondary))
                                 .frame(width: 24, height: 24)
                                 .background(
                                     Circle()
-                                        .fill(intensity > 0.8 ? Color.white.opacity(0.3) : Color.clear)
+                                        .fill(intensity > 1.2 ? boostColor.opacity(0.3) : (intensity > 0.8 ? Color.white.opacity(0.3) : Color.clear))
                                 )
                         }
                         .buttonStyle(.plain)
@@ -771,11 +788,11 @@ private struct AestheticPopover: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 14)
 
-            // Footer - mode description
+            // Footer - contextual description
             Divider()
                 .padding(.horizontal, 12)
 
-            Text(colorMode.description)
+            Text(footerDescription)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -784,6 +801,15 @@ private struct AestheticPopover: View {
         }
         .frame(width: 240)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// Dynamic footer description based on current settings
+    private var footerDescription: String {
+        if intensity > 1.0 {
+            let boostPercent = Int((intensity - 1.0) * 100)
+            return "Boost mode: +\(boostPercent)% vibrancy"
+        }
+        return colorMode.description
     }
 
     private func switchToColorModeIfNeeded() {
@@ -807,7 +833,7 @@ private struct ColorStyleButton: View {
         case .constellation: return "sparkles"
         case .defaultStyle: return "paintpalette"
         case .frost: return "snowflake"
-        case .mono: return "circle.lefthalf.strikethrough"
+        case .mono: return "circle.slash"
         }
     }
 
