@@ -30,7 +30,7 @@
 - **2-second rule:** User must be able to launch any portal in ~2 seconds.
 
 ## Current Status (Jan 2026)
-**Branch:** `feature/orb-microactions-v2`
+**Branch:** `main` (clean - no feature branches)
 
 ### ✅ COMPLETE
 - Phase 1: Drag & Drop upgrade (provider-based)
@@ -50,13 +50,16 @@
   - Custom orb hover effects (scale + brightness)
   - ConditionalHelpModifier for tooltips
   - Documented patterns in VISIONOS_INTERACTION_PATTERNS.md
+- **Aesthetic Popover Menu (Jan 3, 2026)**
+  - Vibrancy, Color Style, Orb Size in unified popover
+  - Vibrancy slider with 150% boost mode
+  - Focus mode reveal button moved to top-left
 
 ### 🔴 NEXT (Priority Order)
 
 #### Phase A.1: Remaining Interaction Polish
 1. **Orb Eye/Gaze Interactions** - Orbs not responding visually to eye gaze (needs device testing)
-2. **Aesthetic Popover Menu** - Color/intensity controls in trailing popover (like constellation popover)
-3. **Filter Popover Menu** - Sort/filter options in trailing popover (like constellation popover)
+2. **Filter Popover Menu** - Sort/filter options in trailing popover (like constellation popover)
 
 #### Phase B: UX Refinements
 4. **Haptic Feedback** - Subtle haptics on orb interactions

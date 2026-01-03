@@ -1,8 +1,8 @@
 # PROJECT STATUS — January 2026
 
 **Last Updated:** January 3, 2026
-**Branch:** feature/orb-microactions-v2
-**Phase:** Phase A Core Interaction Polish Complete
+**Branch:** main (clean)
+**Phase:** Aesthetic Popover Complete
 
 ---
 
@@ -10,16 +10,16 @@
 
 Both **List View** and **Orb View** are now **production-ready**. The orb revamp is complete with an adaptive linear layout system that auto-orients based on window dimensions.
 
-**Phase A Complete (Jan 3, 2026):**
-- Pin → Favorite rename (star icons system-wide)
-- Constellation popover with drag-drop reordering
-- Custom orb hover effects (scale + brightness)
-- Trailing popover pattern documented
+**Aesthetic Popover Complete (Jan 3, 2026):**
+- Unified appearance controls in trailing popover
+- Vibrancy slider with 150% boost mode
+- Color Style: Mono → Portal → Frost → Group
+- Orb Size: S/M/L options
+- Focus mode reveal button moved to top-left
 
 **Next Phase Focus:**
 1. **Orb Eye/Gaze Interactions** - Custom hover effects not responding to visionOS eye gaze (needs device testing)
-2. **Aesthetic Popover Menu** - Color/intensity controls in trailing popover style
-3. **Filter Popover Menu** - Sort/filter options in trailing popover style
+2. **Filter Popover Menu** - Sort/filter options in trailing popover style
 
 ---
 
@@ -44,19 +44,19 @@ Both **List View** and **Orb View** are now **production-ready**. The orb revamp
 - Context menu on constellation pills (Edit/Launch All)
 - Launch button: icon-only with constellation color
 
-### Global Intensity & Color Mode System (NEW - Jan 2, 2026)
-- **Intensity Slider:** Collapsible vertical slider in left ornament
-  - 0.0 = frosted/neutral glass, 1.0 = vibrant colors
-  - Tap sun icon for max, snowflake for min
-  - Collapsed state shows subtle icon (blends in)
-  - Teal fill color when expanded (not attention-grabbing)
-- **Color Mode Toggle:** 4-way collapsible toggle
-  - Constellation mode (orange sparkles): All orbs use active constellation color
-  - Default mode (blue palette): Each portal uses its own style color
-  - Frost mode (cyan snowflake): Gray bubbles, icons keep color
-  - Mono mode (gray slash): Complete grayscale - everything loses color
-  - Auto-collapses after 3 seconds of inactivity
-  - Shows selected mode icon when collapsed (subtle, no color)
+### Aesthetic Popover (Updated Jan 3, 2026)
+- **Unified Appearance Controls** in trailing popover from left ornament
+- **Vibrancy Slider:**
+  - 0% = frosted/neutral glass, 100% = vibrant colors, 150% = boost mode
+  - Dark accent when in boost zone (>100%)
+  - Tick mark shows where 100% sits on slider
+  - Footer shows "Boost mode: +X%" when applicable
+- **Color Style Picker:** (Left to right: Mono → Portal → Frost → Group)
+  - Mono: Complete grayscale (circle.slash icon)
+  - Portal: Each portal uses its own style color
+  - Frost: Gray bubbles, icons keep color
+  - Group: All orbs use active constellation color
+- **Orb Size Picker:** S/M/L with visual indicators
 - **Mono Mode Effects:**
   - Orb bubbles grayscale
   - Favicons grayscale (saturation: 0)
