@@ -463,6 +463,13 @@ Uses arc positioning in `PortalOrbView.swift` with calculated angles for action 
 - 3D orb attachments (RealityKit)
 - Spatial anchoring to surfaces
 - Multi-window workflows
+- **Curved Layout Mode** - Toggle between linear and curved orb arrangements
+  - Inspired by visionOS curved dock aesthetic
+  - Would work well in focus mode with Mac Virtual Display
+  - Orbs arranged in an arc that wraps around user's field of view
+  - Could apply to both narrow (vertical arc) and wide (horizontal arc) layouts
+  - Implementation approach: Custom `Layout` protocol with arc positioning math
+  - See RadialLayout example in Section 8 for similar positioning logic
 
 ---
 
@@ -490,6 +497,13 @@ Button { showPopover.toggle() }
 - Portal filters/sorts
 - Quick settings panels
 - Multi-select options
+- Appearance controls (Aesthetic Popover)
+
+**Known Limitations:**
+- Popovers cannot be tilted or rotated in 3D space - they are system-managed presentations
+- No control over popover z-position or perspective angle
+- Offset is controlled by `arrowEdge` but actual positioning is handled by visionOS
+- For truly custom 3D-positioned UI, would need RealityKit attachments instead
 
 ### Drag and Drop Reordering in Popovers
 Reorder list items using SwiftUI's `.draggable()` and `.dropDestination()`.
@@ -524,5 +538,6 @@ ForEach(items) { item in
 
 | Date | Changes |
 |------|---------|
+| 2026-01-03 | Added popover limitations, curved layout future feature |
 | 2026-01-03 | Added trailing popover and drag-drop patterns |
 | 2026-01-03 | Initial document creation |

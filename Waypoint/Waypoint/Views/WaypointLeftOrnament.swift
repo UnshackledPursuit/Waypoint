@@ -617,8 +617,8 @@ private struct AestheticPopover: View {
     @Binding var colorMode: OrbColorMode
     @Binding var orbSize: OrbSize
 
-    /// Ordered color modes: Group, Frost, Portal, Mono
-    private let colorModeOrder: [OrbColorMode] = [.constellation, .frost, .defaultStyle, .mono]
+    /// Ordered color modes: Mono, Portal, Frost, Group (left to right)
+    private let colorModeOrder: [OrbColorMode] = [.mono, .defaultStyle, .frost, .constellation]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -648,14 +648,14 @@ private struct AestheticPopover: View {
                         .padding(.horizontal, 2)
 
                     HStack(spacing: 10) {
-                        // Frost icon
+                        // Low vibrancy icon (moon = dim)
                         Button {
                             withAnimation(.spring(response: 0.3)) {
                                 intensity = 0.0
                                 switchToColorModeIfNeeded()
                             }
                         } label: {
-                            Image(systemName: "snowflake")
+                            Image(systemName: "moon.fill")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(intensity < 0.2 ? .white : .secondary)
                                 .frame(width: 24, height: 24)
