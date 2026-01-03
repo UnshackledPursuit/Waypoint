@@ -478,6 +478,7 @@ private struct SettingsMenuToggle: View {
     @State private var showAestheticPopover = false
     @State private var showFilterSortPopover = false
     @State private var showOrnamentPopover = false
+    @State private var showStylePreview = false  // Debug: Liquid Glass preview
 
     var body: some View {
         VStack(spacing: 2) {
@@ -536,6 +537,19 @@ private struct SettingsMenuToggle: View {
             .opacity(isExpanded ? 1 : 0)
             .clipped()
 
+            // Style Preview button (debug) - opens full comparison sheet
+            SettingsIconButton(
+                icon: "sparkles",
+                helpText: "Preview Styles",
+                action: {
+                    showStylePreview = true
+                    onInteraction?()
+                }
+            )
+            .frame(height: isExpanded ? nil : 0)
+            .opacity(isExpanded ? 1 : 0)
+            .clipped()
+
             // Settings gear - toggles expanded state
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -561,6 +575,10 @@ private struct SettingsMenuToggle: View {
                 .fill(Color.secondary.opacity(0.15))
         )
         .animation(.easeInOut(duration: 0.2), value: isExpanded)
+        .sheet(isPresented: $showStylePreview) {
+            OrbStyleComparison()
+                .frame(minWidth: 600, minHeight: 700)
+        }
     }
 }
 
