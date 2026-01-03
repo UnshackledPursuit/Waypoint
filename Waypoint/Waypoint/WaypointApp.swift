@@ -34,6 +34,11 @@ struct WaypointApp: App {
     // User preferences
     @AppStorage("clipboardDetectionEnabled") private var clipboardDetectionEnabled = true
 
+    // Focus Mode - hides ornaments for distraction-free viewing
+    @AppStorage("focusMode") private var focusMode = false
+    @State private var temporaryOrnamentReveal = false
+    @State private var ornamentRevealWorkItem: DispatchWorkItem?
+
     // Window size tracking for adaptive layout
     @State private var windowWidth: CGFloat = 400
     @State private var windowHeight: CGFloat = 600
@@ -41,6 +46,16 @@ struct WaypointApp: App {
     /// Thresholds below which ornaments are hidden to save space
     private let narrowWidthThreshold: CGFloat = 250
     private let shortHeightThreshold: CGFloat = 200
+
+    /// Whether ornaments should be hidden (focus mode OR window too small)
+    private var shouldHideOrnaments: Bool {
+        focusMode || windowWidth < narrowWidthThreshold || windowHeight < shortHeightThreshold
+    }
+
+    /// Whether ornaments are currently visible (not hidden OR temporarily revealed)
+    private var ornamentsVisible: Bool {
+        !shouldHideOrnaments || temporaryOrnamentReveal
+    }
 
     // MARK: - Scene
 
@@ -97,24 +112,36 @@ struct WaypointApp: App {
                     Text("Detected URL:\n\(url.absoluteString.prefix(50))...")
                 }
             }
+            // Focus mode reveal button - shows when ornaments are hidden
+            .overlay(alignment: .bottomLeading) {
+                if shouldHideOrnaments && !temporaryOrnamentReveal {
+                    FocusModeRevealButton {
+                        revealOrnamentsTemporarily()
+                    }
+                    .padding(12)
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: shouldHideOrnaments)
+            .animation(.easeInOut(duration: 0.2), value: temporaryOrnamentReveal)
 #if os(visionOS)
             // Left ornament: Tab switching + quick actions (Paste/Add)
-            // Hidden when window is too narrow, too short (horizontal strip), or no constellations yet
+            // Visible when: has constellations AND (not in focus mode OR temporarily revealed)
             .ornament(
-                visibility: (constellationManager.constellations.count >= 1 && windowWidth >= narrowWidthThreshold && windowHeight >= shortHeightThreshold) ? .visible : .hidden,
+                visibility: (constellationManager.constellations.count >= 1 && ornamentsVisible) ? .visible : .hidden,
                 attachmentAnchor: .scene(.leading),
                 contentAlignment: .trailing
             ) {
-                WaypointLeftOrnament(selectedTab: $selectedTab)
+                WaypointLeftOrnament(selectedTab: $selectedTab, focusMode: $focusMode)
                     .environment(portalManager)
                     .environment(navigationState)
                     .environment(constellationManager)
                     .padding(.trailing, 24)
             }
             // Bottom ornament: Filters, constellations, launch
-            // Hidden when window is too narrow, too short, or no portals yet
+            // Visible when: has portals AND (not in focus mode OR temporarily revealed)
             .ornament(
-                visibility: (portalManager.portals.count >= 1 && windowWidth >= narrowWidthThreshold && windowHeight >= shortHeightThreshold) ? .visible : .hidden,
+                visibility: (portalManager.portals.count >= 1 && ornamentsVisible) ? .visible : .hidden,
                 attachmentAnchor: .scene(.bottom),
                 contentAlignment: .top
             ) {
@@ -281,6 +308,62 @@ struct WaypointApp: App {
             }
         }
         print("🌟 Launched constellation via URL scheme: \(constellation.name)")
+    }
+
+    // MARK: - Focus Mode
+
+    /// Temporarily reveals ornaments for 8 seconds, then auto-hides
+    private func revealOrnamentsTemporarily() {
+        // Cancel any pending hide
+        ornamentRevealWorkItem?.cancel()
+
+        // Show ornaments
+        withAnimation(.easeInOut(duration: 0.2)) {
+            temporaryOrnamentReveal = true
+        }
+
+        // Schedule auto-hide after 8 seconds
+        let workItem = DispatchWorkItem { [self] in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                temporaryOrnamentReveal = false
+            }
+        }
+        ornamentRevealWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0, execute: workItem)
+    }
+}
+
+// MARK: - Focus Mode Reveal Button
+
+/// Small button that appears when ornaments are hidden, tap to temporarily reveal
+struct FocusModeRevealButton: View {
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 36, height: 36)
+
+                Circle()
+                    .stroke(Color.white.opacity(isHovering ? 0.5 : 0.2), lineWidth: 1)
+                    .frame(width: 36, height: 36)
+
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(isHovering ? .primary : .secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
+        .help("Show controls")
     }
 }
 

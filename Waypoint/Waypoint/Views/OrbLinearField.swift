@@ -132,13 +132,6 @@ struct OrbLinearField: View {
                 return contentPadding
             }()
 
-            // Calculate grid info early to use for sizing
-            let gridInfo = calculateGridInfo(size: proxy.size, isLandscape: isLandscape, padding: effectivePadding)
-
-            // Calculate ideal content width for single-column vertical mode
-            let isSingleColumnVertical = !isLandscape && gridInfo.count == 1 && !isStripMode
-            let singleColumnWidth = orbItemWidth + effectivePadding * 2
-
             Group {
                 if portals.isEmpty {
                     emptyState
@@ -150,6 +143,7 @@ struct OrbLinearField: View {
                     sectionedLayout(containerSize: proxy.size, sections: sections, isLandscape: isLandscape, padding: effectivePadding)
                 } else {
                     // Standard grid layout
+                    let gridInfo = calculateGridInfo(size: proxy.size, isLandscape: isLandscape, padding: effectivePadding)
                     if isLandscape {
                         horizontalGridLayout(containerSize: proxy.size, rowCount: gridInfo.count, padding: effectivePadding)
                     } else {
@@ -157,11 +151,8 @@ struct OrbLinearField: View {
                     }
                 }
             }
-            .frame(maxHeight: .infinity)
-            .frame(width: isSingleColumnVertical ? singleColumnWidth : nil)
-            .frame(maxWidth: isSingleColumnVertical ? nil : .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: isVeryNarrow ? 12 : (isNarrow ? 16 : 24)))
-            .frame(maxWidth: .infinity) // Center within the available space
         }
         .frame(minHeight: 80) // Further reduced minimum for strip mode
     }

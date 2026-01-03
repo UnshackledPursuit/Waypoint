@@ -1,6 +1,6 @@
 # AGENTS.md — Waypoint Codex/Claude Instructions
 **Purpose:** Ensure any CLI agent reads the right docs and implements changes safely, one phase at a time.
-**Last Updated:** 2026-01-02
+**Last Updated:** 2026-01-03
 
 ---
 
@@ -23,7 +23,7 @@
 - **2-second rule:** User must be able to launch any portal in ~2 seconds.
 
 ## Current Status (Jan 2026)
-**Branch:** `feature/narrow-window-smush`
+**Branch:** `feature/orb-smart-grid`
 
 ### ✅ COMPLETE
 - Phase 1: Drag & Drop upgrade (provider-based)
@@ -33,9 +33,11 @@
 - Phase 5: Adaptive layouts (both views auto-orient)
 - Phase 3.0+: Ornament auto-collapse & polish
 - **Onboarding Experience Overhaul (Jan 3, 2026)**
+- **Narrow Window / Smush Mode** (Jan 3, 2026)
 
 ### ✅ RECENTLY COMPLETED
-- **Narrow Window / Smush Mode** (Jan 3, 2026) - see details below
+- **Focus Mode** (Jan 3, 2026) - see details below
+- **Tooltips for All Ornament Controls** (Jan 3, 2026) - see details below
 
 ### 🔴 NEXT
 - **Phase 6:** Wormhole Swap Animation
@@ -272,3 +274,91 @@ OrbLinearField already has `effectivePadding` logic for `isNarrow` - extend this
 - Test both portrait and landscape orientations
 - Test with 1, 5, 10, 20+ portals
 - Verify micro-actions still work in icon-only mode
+
+---
+
+## Focus Mode (Jan 3, 2026) ✅ IMPLEMENTED
+
+### Overview
+Focus Mode provides a distraction-free viewing experience by hiding ornaments. Can be triggered manually or automatically when the window becomes very narrow/short.
+
+### Trigger Conditions
+Ornaments hide when ANY of these conditions are true:
+- **Focus Mode enabled** via toggle button (eye icon in left ornament)
+- **Window width < 250pt** (auto-trigger)
+- **Window height < 200pt** (auto-trigger)
+
+### Temporary Reveal Mechanism
+When ornaments are hidden, a small "..." button appears in the bottom-left corner:
+- Tap to reveal ornaments for 8 seconds
+- Auto-hides after timeout
+- Allows quick access to controls without exiting focus mode
+
+### Implementation Details
+
+| Component | Purpose |
+|-----------|---------|
+| `@AppStorage("focusMode")` | Persistent toggle state |
+| `temporaryOrnamentReveal` | Transient reveal state |
+| `ornamentRevealWorkItem` | Cancellable timer for auto-hide |
+| `FocusModeRevealButton` | Small circular button with "..." icon |
+| `FocusModeToggle` | Eye/eye.slash toggle in left ornament |
+
+### Files Changed
+- `WaypointApp.swift` - Focus mode state, window tracking, reveal button overlay, ornament visibility logic
+- `WaypointLeftOrnament.swift` - Added `focusMode` binding, `FocusModeToggle` component
+
+### UX Flow
+1. User taps eye icon → ornaments hide immediately
+2. Small "..." button appears in corner
+3. User can tap "..." to temporarily reveal ornaments (8s)
+4. User can tap eye.slash to exit focus mode entirely
+5. Resizing window very small auto-enters focus-like state
+
+---
+
+## Tooltips for All Ornament Controls (Jan 3, 2026) ✅ IMPLEMENTED
+
+### Overview
+Added `.help()` tooltips to all interactive controls in both ornaments. Tooltips appear on hover/gaze in visionOS, providing discoverability for new users.
+
+### Left Ornament Tooltips (WaypointLeftOrnament.swift)
+
+| Control | Tooltip |
+|---------|---------|
+| View toggle | "Switch to Orb View" / "Switch to List View" (dynamic) |
+| Focus Mode | "Enter Focus Mode" / "Exit Focus Mode" (dynamic) |
+| Paste button | "Paste from Clipboard" |
+| Add Portal button | "Add Portal" |
+| Intensity slider | "Adjust Intensity" |
+| Color mode picker | "Color Style" |
+| Orb size picker | "Orb Size" |
+| Constellation button | "Create Constellation" / "Edit Constellation" (dynamic) |
+| Settings gear | "Ornament Settings" |
+| Side ornament toggle | "Side: Auto-hide ON" / "Side: Always Visible" (dynamic) |
+| Bottom ornament toggle | "Bottom: Auto-hide ON" / "Bottom: Always Visible" (dynamic) |
+
+### Bottom Ornament Tooltips (WaypointBottomOrnament.swift)
+
+| Control | Tooltip |
+|---------|---------|
+| All filter | "Show All" |
+| Pinned filter | "Show Pinned" |
+| Constellation pills | "View [constellation name]" (dynamic) |
+| Create button (+) | "Create Constellation" |
+| Launch All button | "Launch All" |
+
+### Implementation Pattern
+Added optional `helpText` parameter to reusable button components:
+```swift
+private struct TabIconButton: View {
+    let icon: String
+    var helpText: String? = nil
+    // ...
+    .help(helpText ?? "")
+}
+```
+
+### Files Changed
+- `WaypointLeftOrnament.swift` - Added tooltips to all controls
+- `WaypointBottomOrnament.swift` - Added tooltips to all controls

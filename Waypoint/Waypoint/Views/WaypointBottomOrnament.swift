@@ -253,6 +253,7 @@ struct WaypointBottomOrnament: View {
             CompactPillButton(
                 icon: "square.grid.2x2",
                 isSelected: navigationState.filterOption == .all,
+                helpText: "Show All",
                 action: {
                     navigationState.filterOption = .all
                     navigationState.selectedConstellationID = nil
@@ -275,6 +276,7 @@ struct WaypointBottomOrnament: View {
             CompactPillButton(
                 icon: "pin.fill",
                 isSelected: navigationState.filterOption == .pinned,
+                helpText: "Show Pinned",
                 action: {
                     navigationState.filterOption = .pinned
                     scheduleCollapse()
@@ -304,6 +306,7 @@ struct WaypointBottomOrnament: View {
             }
         }
         .buttonStyle(.plain)
+        .help("Launch All")
     }
 
     // MARK: - Divider
@@ -358,6 +361,7 @@ struct WaypointBottomOrnament: View {
             }
         }
         .buttonStyle(.plain)
+        .help("Create Constellation")
     }
 
     // MARK: - Actions
@@ -398,6 +402,7 @@ struct WaypointBottomOrnament: View {
 private struct CompactPillButton: View {
     let icon: String
     var isSelected: Bool = false
+    var helpText: String? = nil
     let action: () -> Void
     var onInteraction: (() -> Void)? = nil
 
@@ -430,6 +435,7 @@ private struct CompactPillButton: View {
                 onInteraction?()
             }
         }
+        .help(helpText ?? "")
     }
 }
 
@@ -520,6 +526,7 @@ private struct ConstellationPill: View {
                 onInteraction?()
             }
         }
+        .help("View \(constellation.name)")
         .onChange(of: isPulsing) { _, newValue in
             if newValue {
                 withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {

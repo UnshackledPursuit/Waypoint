@@ -58,6 +58,7 @@ struct WaypointLeftOrnament: View {
     // MARK: - Properties
 
     @Binding var selectedTab: WaypointApp.AppTab
+    @Binding var focusMode: Bool
     @Environment(NavigationState.self) private var navigationState
     @Environment(PortalManager.self) private var portalManager
     @Environment(ConstellationManager.self) private var constellationManager
@@ -119,6 +120,9 @@ struct WaypointLeftOrnament: View {
             }
 
             if isExpanded {
+                // Focus Mode toggle (always visible when expanded)
+                FocusModeToggle(focusMode: $focusMode, onInteraction: scheduleCollapse)
+
                 // Divider (only if view toggle is shown)
                 if showAdvancedControls {
                     Rectangle()
@@ -130,6 +134,7 @@ struct WaypointLeftOrnament: View {
                 // Quick actions (always visible when expanded)
                 TabIconButton(
                     icon: "doc.on.clipboard",
+                    helpText: "Paste from Clipboard",
                     action: {
                         quickPasteFromClipboard()
                         scheduleCollapse()
@@ -138,6 +143,7 @@ struct WaypointLeftOrnament: View {
 
                 TabIconButton(
                     icon: "link.badge.plus",
+                    helpText: "Add Portal",
                     action: {
                         showQuickAdd = true
                         scheduleCollapse()
@@ -171,6 +177,7 @@ struct WaypointLeftOrnament: View {
                 // Constellation edit (handles both edit and create)
                 TabIconButton(
                     icon: "sparkles",
+                    helpText: constellationManager.constellations.isEmpty ? "Create Constellation" : "Edit Constellation",
                     action: {
                         if let first = constellationManager.constellations.first {
                             constellationToEdit = first
@@ -350,6 +357,53 @@ private struct CompactViewToggle: View {
             }
         }
         .buttonStyle(.plain)
+        .help(selectedTab == .list ? "Switch to Orb View" : "Switch to List View")
+    }
+}
+
+// MARK: - Focus Mode Toggle
+
+/// Toggle button for Focus Mode (hides ornaments for distraction-free viewing)
+/// Shows "eye.slash" when focus mode is on, "eye" when off
+private struct FocusModeToggle: View {
+    @Binding var focusMode: Bool
+    var onInteraction: (() -> Void)? = nil
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                focusMode.toggle()
+            }
+            onInteraction?()
+        } label: {
+            ZStack {
+                // Background - highlight when active
+                Circle()
+                    .fill(focusMode ? Color.white.opacity(0.25) : (isHovering ? Color.white.opacity(0.1) : Color.clear))
+                    .frame(width: 32, height: 32)
+
+                if focusMode {
+                    Circle()
+                        .stroke(Color.white.opacity(0.5), lineWidth: 1.5)
+                        .frame(width: 32, height: 32)
+                }
+
+                // Icon - eye.slash when focused, eye when not
+                Image(systemName: focusMode ? "eye.slash" : "eye")
+                    .font(.system(size: 14, weight: focusMode ? .semibold : .regular))
+                    .foregroundStyle(focusMode ? .primary : .secondary)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
+        .help(focusMode ? "Exit Focus Mode" : "Enter Focus Mode")
     }
 }
 
@@ -358,6 +412,7 @@ private struct CompactViewToggle: View {
 private struct TabIconButton: View {
     let icon: String
     var isSelected: Bool = false
+    var helpText: String? = nil
     let action: () -> Void
 
     @State private var isHovering = false
@@ -386,6 +441,7 @@ private struct TabIconButton: View {
                 isHovering = hovering
             }
         }
+        .help(helpText ?? "")
     }
 }
 
@@ -456,6 +512,7 @@ private struct IntensityControl: View {
             }
         }
         .buttonStyle(.plain)
+        .help("Adjust Intensity")
     }
 
     // MARK: - Expanded Slider
@@ -608,6 +665,7 @@ private struct ColorModeToggle: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .help("Color Style")
             }
         }
         .padding(3)
@@ -725,6 +783,7 @@ private struct OrbSizeToggle: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .help("Orb Size")
             }
         }
         .padding(3)
@@ -796,6 +855,7 @@ private struct OrnamentSettingsToggle: View {
                 // Left ornament toggle (no slash = stays visible, slash = will auto-hide)
                 SettingsToggleRow(
                     icon: "sidebar.left",
+                    helpText: leftAutoCollapse ? "Side: Auto-hide ON" : "Side: Always Visible",
                     isOn: $leftAutoCollapse,
                     onToggle: {
                         scheduleCollapse()
@@ -806,6 +866,7 @@ private struct OrnamentSettingsToggle: View {
                 // Bottom ornament toggle
                 SettingsToggleRow(
                     icon: "dock.rectangle",
+                    helpText: bottomAutoCollapse ? "Bottom: Auto-hide ON" : "Bottom: Always Visible",
                     isOn: $bottomAutoCollapse,
                     onToggle: {
                         scheduleCollapse()
@@ -841,6 +902,7 @@ private struct OrnamentSettingsToggle: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .help("Ornament Settings")
             }
         }
         .padding(3)
@@ -866,6 +928,7 @@ private struct OrnamentSettingsToggle: View {
 /// Toggle row for settings - shows ornament icon with slash when auto-collapse is ON
 private struct SettingsToggleRow: View {
     let icon: String
+    var helpText: String? = nil
     @Binding var isOn: Bool
     var onToggle: (() -> Void)? = nil
 
@@ -899,6 +962,7 @@ private struct SettingsToggleRow: View {
             )
         }
         .buttonStyle(.plain)
+        .help(helpText ?? "")
     }
 }
 
@@ -1480,7 +1544,7 @@ struct PortalChip: View {
 // MARK: - Preview
 
 #Preview {
-    WaypointLeftOrnament(selectedTab: .constant(.list))
+    WaypointLeftOrnament(selectedTab: .constant(.list), focusMode: .constant(false))
         .padding()
 }
 
