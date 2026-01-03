@@ -75,6 +75,12 @@
 6. **Spatial Widgets** (visionOS 26) - Waypoint widget snaps to walls/tables
 7. **"Look to Scroll"** - For long portal lists
 
+#### Phase B.5: View Behavior Consistency (Own Phase)
+- **Duplicate link handling** - Unify behavior between List and Orb views
+- List view: auto-scrolls to existing portal (works)
+- Orb view: silent (spatial layout can't scroll)
+- Solution: Toast notification + visual highlight in both views
+
 #### Phase D: Final Polish
 8. **Liquid Glass Adoption** - Update sheets/inspectors when ready
 9. **Custom Hover for Constellations** - Expand to show portal thumbnails
@@ -165,6 +171,12 @@ git push origin --delete experiment/xxx
 These are ideas for post-v1 consideration. Do not implement unless explicitly requested.
 
 - **Custom Sort Enhancements:** Review/improve custom sort behavior (known issues with drag-reorder - needs investigation before modifying)
+- **Quick Add Redesign:** Split URL input from Portal Packs. Consider:
+  - Portal Packs as trailing auxiliary window (right side of app)
+  - Live constellation assignment with real-time main view updates
+  - Quick URL input as fast popup modal (keep simple, URL-focused)
+  - Preserve current layout structure - works well
+- **Orb Visual Redesign:** Explore alternative orb rendering styles (current: 7-layer glass sphere). Options to investigate: Liquid Glass (visionOS 26), RealityKit 3D, simpler flat styles, custom shapes per portal type
 - **Save Profile / Workspace Presets:** Allow users to save and restore portal/constellation setups
 - **Delete Constellation UI:** Add explicit delete option in constellation management
 - **Per-constellation layout overrides:** Allow users to override auto-layout per constellation
@@ -176,6 +188,7 @@ These are ideas for post-v1 consideration. Do not implement unless explicitly re
 ## Known Issues (to address)
 - Quick Add keyboard missing voice/mic button (cosmetic)
 - RTFD duplicate portal creation from Notes drops (workaround: skip RTFD files)
+- **Duplicate link behavior inconsistent:** List view auto-scrolls to existing portal; Orb view does nothing (architectural - orbs are spatial, not scrollable). Needs unified feedback approach.
 
 ---
 
