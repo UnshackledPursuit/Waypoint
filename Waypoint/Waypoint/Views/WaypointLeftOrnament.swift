@@ -59,6 +59,7 @@ struct WaypointLeftOrnament: View {
 
     @Binding var selectedTab: WaypointApp.AppTab
     @Binding var focusMode: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(NavigationState.self) private var navigationState
     @Environment(PortalManager.self) private var portalManager
     @Environment(ConstellationManager.self) private var constellationManager
@@ -243,7 +244,7 @@ struct WaypointLeftOrnament: View {
         }
         .padding(6)
         .glassBackgroundEffect()
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
+        .animation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
         .onHover { hovering in
             if hovering {
                 expand()
@@ -270,14 +271,14 @@ struct WaypointLeftOrnament: View {
     // MARK: - Expand/Collapse
 
     private func expand() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
             isExpanded = true
         }
         scheduleCollapse()
     }
 
     private func collapse() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
             isExpanded = false
         }
     }
@@ -327,6 +328,7 @@ struct WaypointLeftOrnament: View {
 
         let portal = DropService.createPortal(from: validURL)
         portalManager.add(portal)
+        HapticService.success()
 
         // Auto-add to active constellation
         if let constellationID = selectedConstellationID,
@@ -347,9 +349,12 @@ private struct CompactViewToggle: View {
     @Binding var selectedTab: WaypointApp.AppTab
     var onInteraction: (() -> Void)? = nil
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            HapticService.selection()
+            withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.7)) {
                 selectedTab = selectedTab == .list ? .orb : .list
             }
             onInteraction?()
@@ -384,11 +389,12 @@ private struct FocusModeToggle: View {
     @Binding var focusMode: Bool
     var onInteraction: (() -> Void)? = nil
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
 
     var body: some View {
         Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.7)) {
                 focusMode.toggle()
             }
             onInteraction?()
@@ -414,7 +420,7 @@ private struct FocusModeToggle: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
@@ -430,6 +436,7 @@ private struct TabIconButton: View {
     var helpText: String? = nil
     let action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
 
     var body: some View {
@@ -452,7 +459,7 @@ private struct TabIconButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
@@ -470,6 +477,7 @@ private struct SettingsMenuToggle: View {
     @Binding var focusMode: Bool
     var onInteraction: (() -> Void)? = nil
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(NavigationState.self) private var navigationState
     @Environment(ConstellationManager.self) private var constellationManager
     @Environment(PortalManager.self) private var portalManager
@@ -478,7 +486,6 @@ private struct SettingsMenuToggle: View {
     @State private var showAestheticPopover = false
     @State private var showFilterSortPopover = false
     @State private var showOrnamentPopover = false
-    @State private var showStylePreview = false  // Debug: Liquid Glass preview
 
     var body: some View {
         VStack(spacing: 2) {
@@ -537,22 +544,9 @@ private struct SettingsMenuToggle: View {
             .opacity(isExpanded ? 1 : 0)
             .clipped()
 
-            // Style Preview button (debug) - opens full comparison sheet
-            SettingsIconButton(
-                icon: "sparkles",
-                helpText: "Preview Styles",
-                action: {
-                    showStylePreview = true
-                    onInteraction?()
-                }
-            )
-            .frame(height: isExpanded ? nil : 0)
-            .opacity(isExpanded ? 1 : 0)
-            .clipped()
-
             // Settings gear - toggles expanded state
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
                     isExpanded.toggle()
                 }
                 onInteraction?()
@@ -574,11 +568,7 @@ private struct SettingsMenuToggle: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.secondary.opacity(0.15))
         )
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
-        .sheet(isPresented: $showStylePreview) {
-            OrbStyleComparison()
-                .frame(minWidth: 600, minHeight: 700)
-        }
+        .animation(reduceMotion ? .none : .easeInOut(duration: 0.2), value: isExpanded)
     }
 }
 
@@ -696,6 +686,7 @@ private struct OrnamentSettingRow: View {
     @Binding var isOn: Bool
     var onChange: (() -> Void)? = nil
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
 
     var body: some View {
@@ -746,7 +737,7 @@ private struct OrnamentSettingRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
@@ -759,6 +750,7 @@ private struct SettingsIconButton: View {
     let helpText: String
     let action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
 
     var body: some View {
@@ -776,12 +768,11 @@ private struct SettingsIconButton: View {
         .buttonStyle(.plain)
         .contentShape(Circle())
         #if os(visionOS)
-        .hoverEffect(.highlight, isEnabled: false)
-        .hoverEffectDisabled()
+        .hoverEffect(.highlight)
         #endif
         .help(helpText)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
@@ -797,6 +788,8 @@ private struct AestheticPopover: View {
     @Binding var intensity: Double
     @Binding var colorMode: OrbColorMode
     @Binding var orbSize: OrbSize
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Ordered color modes: Mono, Portal, Frost, Group (left to right)
     private let colorModeOrder: [OrbColorMode] = [.mono, .defaultStyle, .frost, .constellation]
@@ -837,7 +830,7 @@ private struct AestheticPopover: View {
                     HStack(spacing: 10) {
                         // Low vibrancy icon (dim)
                         Button {
-                            withAnimation(.spring(response: 0.3)) {
+                            withAnimation(reduceMotion ? .none : .spring(response: 0.3)) {
                                 intensity = 0.0
                                 switchToColorModeIfNeeded()
                             }
@@ -904,7 +897,7 @@ private struct AestheticPopover: View {
 
                         // High vibrancy icon (boost)
                         Button {
-                            withAnimation(.spring(response: 0.3)) {
+                            withAnimation(reduceMotion ? .none : .spring(response: 0.3)) {
                                 intensity = maxIntensity
                                 switchToColorModeIfNeeded()
                             }
@@ -935,7 +928,7 @@ private struct AestheticPopover: View {
                                 mode: mode,
                                 isSelected: colorMode == mode,
                                 action: {
-                                    withAnimation(.spring(response: 0.3)) {
+                                    withAnimation(reduceMotion ? .none : .spring(response: 0.3)) {
                                         colorMode = mode
                                     }
                                 }
@@ -957,7 +950,7 @@ private struct AestheticPopover: View {
                                 size: size,
                                 isSelected: orbSize == size,
                                 action: {
-                                    withAnimation(.spring(response: 0.3)) {
+                                    withAnimation(reduceMotion ? .none : .spring(response: 0.3)) {
                                         orbSize = size
                                     }
                                 }
@@ -1007,6 +1000,7 @@ private struct ColorStyleButton: View {
     let isSelected: Bool
     let action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
 
     private var modeIcon: String {
@@ -1053,7 +1047,7 @@ private struct ColorStyleButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
@@ -1066,6 +1060,7 @@ private struct OrbSizeStyleButton: View {
     let isSelected: Bool
     let action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
 
     /// Visual circle size to represent orb size
@@ -1104,7 +1099,7 @@ private struct OrbSizeStyleButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
@@ -1116,6 +1111,7 @@ private struct OrbSizeStyleButton: View {
 /// Popover for sort order and filter options
 /// Uses trailing popover pattern from left ornament
 private struct FilterSortPopover: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(NavigationState.self) private var navigationState
     @Environment(ConstellationManager.self) private var constellationManager
 
@@ -1166,7 +1162,7 @@ private struct FilterSortPopover: View {
                                 order: order,
                                 isSelected: navigationState.sortOrder == order,
                                 action: {
-                                    withAnimation(.spring(response: 0.3)) {
+                                    withAnimation(reduceMotion ? .none : .spring(response: 0.3)) {
                                         navigationState.sortOrder = order
                                     }
                                 }
@@ -1189,7 +1185,7 @@ private struct FilterSortPopover: View {
                         count: ungroupedCount,
                         isActive: navigationState.filterOption == .ungrouped,
                         action: {
-                            withAnimation(.spring(response: 0.3)) {
+                            withAnimation(reduceMotion ? .none : .spring(response: 0.3)) {
                                 if navigationState.filterOption == .ungrouped {
                                     navigationState.filterOption = .all
                                 } else {
@@ -1233,6 +1229,7 @@ private struct CompactSortButton: View {
     let isSelected: Bool
     let action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
 
     var body: some View {
@@ -1259,7 +1256,7 @@ private struct CompactSortButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
@@ -1274,6 +1271,7 @@ private struct CompactFilterButton: View {
     let isActive: Bool
     let action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
 
     var body: some View {
@@ -1316,7 +1314,7 @@ private struct CompactFilterButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
@@ -1348,6 +1346,7 @@ private struct ConstellationQuickPopover: View {
     let onCreate: () -> Void
     let onReorder: (UUID, UUID) -> Void  // (sourceID, targetID)
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(PortalManager.self) private var portalManager
     @State private var showEditButtons = false
     @State private var showInfoPopover = false
@@ -1382,7 +1381,7 @@ private struct ConstellationQuickPopover: View {
 
                 // Edit mode toggle
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
                         showEditButtons.toggle()
                     }
                 } label: {
@@ -1479,6 +1478,7 @@ private struct ConstellationPopoverRow: View {
     let onSelect: () -> Void
     let onEdit: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
     @State private var isDropTarget = false
 
@@ -1537,7 +1537,7 @@ private struct ConstellationPopoverRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
@@ -1552,7 +1552,9 @@ private struct DebugMenuButton: View {
     let constellationManager: ConstellationManager
     var onInteraction: (() -> Void)? = nil
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isExpanded = false
+    @State private var showOrbCatalog = false
 
     /// Resets onboarding state via AppStorage
     private func resetOnboarding() {
@@ -1562,60 +1564,50 @@ private struct DebugMenuButton: View {
     var body: some View {
         VStack(spacing: 2) {
             if isExpanded {
-                // Load Sample Data
+                // Orb Style Catalog
+                Button {
+                    showOrbCatalog = true
+                    isExpanded = false
+                } label: {
+                    Image(systemName: "circle.hexagongrid.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.cyan)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.cyan.opacity(0.2)))
+                }
+                .buttonStyle(.plain)
+                .help("Orb Style Catalog")
+
+                // Load Sample Data (portals + constellations)
                 Button {
                     portalManager.loadSampleData()
                     constellationManager.loadSampleData()
                     isExpanded = false
                     onInteraction?()
                 } label: {
-                    Image(systemName: "square.and.arrow.down")
+                    Image(systemName: "tray.and.arrow.down.fill")
                         .font(.system(size: 12))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(.white)
                         .frame(width: 26, height: 26)
-                        .background(Circle().fill(Color.blue.opacity(0.15)))
+                        .background(Circle().fill(Color(white: 0.25)))
                 }
                 .buttonStyle(.plain)
+                .help("Load sample portals + constellations")
 
-                // Clear Portals
-                Button {
-                    portalManager.clearAll()
-                    isExpanded = false
-                } label: {
-                    Image(systemName: "star.slash")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.orange)
-                        .frame(width: 26, height: 26)
-                        .background(Circle().fill(Color.orange.opacity(0.15)))
-                }
-                .buttonStyle(.plain)
-
-                // Clear Constellations
-                Button {
-                    constellationManager.clearAll()
-                    isExpanded = false
-                } label: {
-                    Image(systemName: "sparkles.slash")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.purple)
-                        .frame(width: 26, height: 26)
-                        .background(Circle().fill(Color.purple.opacity(0.15)))
-                }
-                .buttonStyle(.plain)
-
-                // Clear All
+                // Clear All (nuclear option)
                 Button {
                     portalManager.clearAll()
                     constellationManager.clearAll()
                     isExpanded = false
                 } label: {
-                    Image(systemName: "trash")
+                    Image(systemName: "trash.fill")
                         .font(.system(size: 12))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(.white)
                         .frame(width: 26, height: 26)
-                        .background(Circle().fill(Color.red.opacity(0.15)))
+                        .background(Circle().fill(Color(white: 0.15)))
                 }
                 .buttonStyle(.plain)
+                .help("Clear all data")
 
                 // Reset Onboarding
                 Button {
@@ -1624,11 +1616,12 @@ private struct DebugMenuButton: View {
                 } label: {
                     Image(systemName: "arrow.counterclockwise")
                         .font(.system(size: 12))
-                        .foregroundStyle(.cyan)
+                        .foregroundStyle(.white)
                         .frame(width: 26, height: 26)
-                        .background(Circle().fill(Color.cyan.opacity(0.15)))
+                        .background(Circle().fill(Color(white: 0.35)))
                 }
                 .buttonStyle(.plain)
+                .help("Reset onboarding hints")
 
                 // Close
                 Button {
@@ -1646,13 +1639,14 @@ private struct DebugMenuButton: View {
                 Button {
                     isExpanded = true
                 } label: {
-                    Image(systemName: "ladybug")
+                    Image(systemName: "ladybug.fill")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .frame(width: 26, height: 26)
                         .background(Circle().fill(Color.secondary.opacity(0.15)))
                 }
                 .buttonStyle(.plain)
+                .help("Debug menu")
             }
         }
         .padding(3)
@@ -1660,7 +1654,10 @@ private struct DebugMenuButton: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.secondary.opacity(0.15))
         )
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+        .animation(reduceMotion ? .none : .easeInOut(duration: 0.2), value: isExpanded)
+        .sheet(isPresented: $showOrbCatalog) {
+            OrbStyleCatalog()
+        }
     }
 }
 #endif

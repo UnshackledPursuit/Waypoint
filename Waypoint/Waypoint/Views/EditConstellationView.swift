@@ -13,6 +13,7 @@ struct EditConstellationView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(ConstellationManager.self) private var constellationManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let initialConstellation: Constellation
 
@@ -313,7 +314,7 @@ struct EditConstellationView: View {
         }
 
         // Switch to new constellation
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.7)) {
             selectedConstellationID = constellation.id
             name = constellation.name
             selectedIcon = constellation.icon
@@ -446,7 +447,7 @@ struct EditConstellationView: View {
 
     private func iconButton(for icon: String) -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 selectedIcon = icon
             }
         } label: {
@@ -527,7 +528,7 @@ struct EditConstellationView: View {
         let isSelected = selectedColorHex == colorHex
 
         return Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+            withAnimation(reduceMotion ? .none : .spring(response: 0.25, dampingFraction: 0.7)) {
                 selectedColorHex = colorHex
             }
         } label: {

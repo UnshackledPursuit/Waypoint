@@ -15,6 +15,7 @@ struct AddPortalView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(PortalManager.self) private var portalManager
     @Environment(ConstellationManager.self) private var constellationManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let editingPortal: Portal?
     let focusRequestPortalID: Binding<UUID?>?
     let dismissMicroActionsPortalID: Binding<UUID?>?
@@ -532,7 +533,7 @@ struct AddPortalView: View {
         let color = Color(hex: customColorHex)
 
         return Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+            withAnimation(reduceMotion ? .none : .spring(response: 0.25, dampingFraction: 0.7)) {
                 customIcon = icon
             }
         } label: {
@@ -595,7 +596,7 @@ struct AddPortalView: View {
         let isSelected = customColorHex == colorHex
 
         return Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+            withAnimation(reduceMotion ? .none : .spring(response: 0.25, dampingFraction: 0.7)) {
                 customColorHex = colorHex
             }
         } label: {
@@ -657,7 +658,7 @@ struct AddPortalView: View {
                 ForEach(constellationManager.constellations) { constellation in
                     let isAssigned = constellation.portalIDs.contains(portal.id)
                     Button {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                        withAnimation(reduceMotion ? .none : .spring(response: 0.2, dampingFraction: 0.7)) {
                             if isAssigned {
                                 constellationManager.removePortal(portal.id, from: constellation)
                             } else {
@@ -698,13 +699,13 @@ struct AddPortalView: View {
     // MARK: - Hero Preview (Edit Mode)
 
     private var portalHeroPreview: some View {
-        let orbSize: CGFloat = 72
+        let orbSize: CGFloat = 56  // Compact size
         let color = heroDisplayColor
 
         // Show favicon if: not custom style, OR custom style with keepFavicon enabled
         let showFavicon = !useCustomStyle || (useCustomStyle && keepFaviconWithCustomStyle)
 
-        return VStack(spacing: 12) {
+        return VStack(spacing: 8) {
             // Beautiful glass sphere orb (matching EditConstellationView style)
             ZStack {
                 if showFavicon,
@@ -739,7 +740,7 @@ struct AddPortalView: View {
                             .resizable()
                             .scaledToFit()
                             .clipShape(Circle())
-                            .frame(width: orbSize - 16, height: orbSize - 16)
+                            .frame(width: orbSize - 12, height: orbSize - 12)
 
                         // Glass highlight
                         Circle()
@@ -858,35 +859,35 @@ struct AddPortalView: View {
                         // Icon or Initials with enhanced visibility
                         if useIconInsteadOfInitials {
                             Image(systemName: heroDisplayIcon)
-                                .font(.system(size: 28, weight: .semibold))
+                                .font(.system(size: 22, weight: .semibold))
                                 .foregroundStyle(.white)
-                                .shadow(color: color.opacity(0.9), radius: 4)
-                                .shadow(color: Color.black.opacity(0.3), radius: 2, y: 1)
+                                .shadow(color: color.opacity(0.9), radius: 3)
+                                .shadow(color: Color.black.opacity(0.3), radius: 1, y: 1)
                         } else {
                             Text(heroDisplayInitials)
-                                .font(.system(size: heroDisplayInitials.count > 1 ? 24 : 30, weight: .bold))
+                                .font(.system(size: heroDisplayInitials.count > 1 ? 18 : 22, weight: .bold))
                                 .foregroundStyle(.white)
-                                .shadow(color: color.opacity(0.9), radius: 4)
-                                .shadow(color: Color.black.opacity(0.3), radius: 2, y: 1)
+                                .shadow(color: color.opacity(0.9), radius: 3)
+                                .shadow(color: Color.black.opacity(0.3), radius: 1, y: 1)
                         }
                     }
                 }
             }
-            .frame(width: orbSize * 1.5, height: orbSize * 1.5)
-            .shadow(color: color.opacity(0.35), radius: 10, y: 3)
+            .frame(width: orbSize * 1.3, height: orbSize * 1.3)
+            .shadow(color: color.opacity(0.35), radius: 8, y: 2)
 
             // Name under orb
             Text(name.isEmpty ? "Portal Name" : name)
-                .font(.headline)
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(name.isEmpty ? .secondary : .primary)
 
             Text(url.isEmpty ? "portal-url.com" : cleanURL(url))
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
     }
 
     /// Computed fallback color based on current URL

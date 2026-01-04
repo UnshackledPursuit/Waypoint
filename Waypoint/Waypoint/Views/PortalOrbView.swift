@@ -37,6 +37,10 @@ struct PortalOrbView: View {
     @State private var microActionsWorkItem: DispatchWorkItem?
     @State private var isHovering = false
 
+    // MARK: - Accessibility
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     /// Notification name for dismissing all micro-action menus
     private static let dismissAllMenusNotification = Notification.Name("DismissAllOrbMicroActions")
 
@@ -134,7 +138,7 @@ struct PortalOrbView: View {
                 .contentShape(Circle())
                 // Track hover state for visual feedback
                 .onHover { hovering in
-                    withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                    withAnimation(reduceMotion ? .none : .spring(response: 0.2, dampingFraction: 0.7)) {
                         isHovering = hovering
                     }
                 }
@@ -142,7 +146,7 @@ struct PortalOrbView: View {
                 .scaleEffect(isHovering ? 1.12 : 1.0)
                 // Slight brightness boost on hover
                 .brightness(isHovering ? 0.05 : 0)
-                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isHovering)
+                .animation(reduceMotion ? .none : .spring(response: 0.2, dampingFraction: 0.7), value: isHovering)
                 // Only apply tooltip when label is hidden (focus/strip mode) - no empty tooltips
                 .modifier(ConditionalHelpModifier(helpText: portal.name, showHelp: !showLabel))
                 .onTapGesture {
@@ -156,12 +160,14 @@ struct PortalOrbView: View {
                     LongPressGesture(minimumDuration: 0.5)
                         .onEnded { _ in
                             guard microActionsEnabled else { return }
+                            // Haptic feedback for long-press
+                            HapticService.lightImpact()
                             // Dismiss all other menus first
                             NotificationCenter.default.post(
                                 name: Self.dismissAllMenusNotification,
                                 object: portal.id
                             )
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
                                 showMicroActions = true
                                 showConstellationPicker = false
                             }
@@ -235,8 +241,8 @@ struct PortalOrbView: View {
                     }
                 }
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showMicroActions)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showConstellationPicker)
+        .animation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8), value: showMicroActions)
+        .animation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8), value: showConstellationPicker)
         .onReceive(NotificationCenter.default.publisher(for: Self.dismissAllMenusNotification)) { notification in
             // Dismiss this menu unless we're the one that sent the notification
             if let senderID = notification.object as? UUID, senderID != portal.id {
@@ -398,7 +404,7 @@ struct PortalOrbView: View {
                     // Constellation toggle button
                     if !constellations.isEmpty || onCreateConstellation != nil {
                         Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
                                 showConstellationPicker = true
                                 pauseAutoDismiss()
                             }
@@ -414,6 +420,7 @@ struct PortalOrbView: View {
                     // Favorite button
                     if onTogglePin != nil {
                         Button {
+                            HapticService.success()
                             onTogglePin?()
                             scheduleMicroActionsDismiss()
                         } label: {
@@ -443,6 +450,7 @@ struct PortalOrbView: View {
                     // Delete button
                     if let onDelete {
                         Button {
+                            HapticService.mediumImpact()
                             dismissMicroActions()
                             onDelete()
                         } label: {
@@ -547,7 +555,7 @@ struct PortalOrbView: View {
     private func dismissMicroActions() {
         microActionsWorkItem?.cancel()
         microActionsWorkItem = nil
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
             showMicroActions = false
             showConstellationPicker = false
         }

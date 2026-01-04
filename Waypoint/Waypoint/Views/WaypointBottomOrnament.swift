@@ -21,6 +21,7 @@ struct WaypointBottomOrnament: View {
     @Environment(NavigationState.self) private var navigationState
     @Environment(ConstellationManager.self) private var constellationManager
     @Environment(PortalManager.self) private var portalManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var constellationToEdit: Constellation?
     @State private var showCreateConstellation = false
@@ -241,14 +242,14 @@ struct WaypointBottomOrnament: View {
     // MARK: - Collapse/Expand
 
     private func expand() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
             isExpanded = true
         }
         scheduleCollapse()
     }
 
     private func collapse() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
             isExpanded = false
         }
     }
@@ -424,6 +425,7 @@ private struct CompactPillButton: View {
     let action: () -> Void
     var onInteraction: (() -> Void)? = nil
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
 
     var body: some View {
@@ -446,7 +448,7 @@ private struct CompactPillButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
             if hovering {
@@ -469,6 +471,7 @@ private struct ConstellationPill: View {
     let onLaunch: () -> Void
     var onInteraction: (() -> Void)? = nil
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
     @State private var pulseScale: CGFloat = 1.0
 
@@ -537,7 +540,7 @@ private struct ConstellationPill: View {
             }
         }
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
             if hovering {
@@ -547,18 +550,18 @@ private struct ConstellationPill: View {
         .help("View \(constellation.name)")
         .onChange(of: isPulsing) { _, newValue in
             if newValue {
-                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
                     pulseScale = 1.4
                 }
             } else {
-                withAnimation(.easeOut(duration: 0.2)) {
+                withAnimation(reduceMotion ? .none : .easeOut(duration: 0.2)) {
                     pulseScale = 1.0
                 }
             }
         }
         .onAppear {
             if isPulsing {
-                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
                     pulseScale = 1.4
                 }
             }

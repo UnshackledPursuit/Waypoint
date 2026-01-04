@@ -14,6 +14,7 @@ struct CreateConstellationView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(ConstellationManager.self) private var constellationManager
     @Environment(PortalManager.self) private var portalManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let initialPortal: Portal?
 
@@ -340,7 +341,7 @@ struct CreateConstellationView: View {
 
     private func iconButton(for icon: String) -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 selectedIcon = icon
                 // Only auto-fill name if user hasn't customized it
                 if !hasCustomName {
@@ -425,7 +426,7 @@ struct CreateConstellationView: View {
         let isSelected = selectedColorHex == colorHex
 
         return Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+            withAnimation(reduceMotion ? .none : .spring(response: 0.25, dampingFraction: 0.7)) {
                 selectedColorHex = colorHex
             }
         } label: {
@@ -509,7 +510,7 @@ struct CreateConstellationView: View {
         let color = colorForURL(portal.url)
 
         return Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+            withAnimation(reduceMotion ? .none : .spring(response: 0.25, dampingFraction: 0.7)) {
                 if isSelected {
                     selectedPortalIDs.remove(portal.id)
                 } else {

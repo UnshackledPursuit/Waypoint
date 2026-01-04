@@ -245,16 +245,29 @@ struct Portal: Identifiable, Codable, Hashable {
 extension Portal {
     // Fixed UUIDs for sample data (so constellations can reference them)
     static let sampleIDs = (
-        youtube: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-        claude: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
-        chatgpt: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
-        gemini: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!,
-        grok: UUID(uuidString: "00000000-0000-0000-0000-000000000005")!,
-        xcom: UUID(uuidString: "00000000-0000-0000-0000-000000000006")!,
+        // Core Tools
+        claude: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+        github: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+        notion: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+        figma: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!,
+        linear: UUID(uuidString: "00000000-0000-0000-0000-000000000005")!,
+        // Communication
+        slack: UUID(uuidString: "00000000-0000-0000-0000-000000000006")!,
         gmail: UUID(uuidString: "00000000-0000-0000-0000-000000000007")!,
-        googleDocs: UUID(uuidString: "00000000-0000-0000-0000-000000000008")!,
-        github: UUID(uuidString: "00000000-0000-0000-0000-000000000009")!,
-        notion: UUID(uuidString: "00000000-0000-0000-0000-00000000000A")!
+        calendar: UUID(uuidString: "00000000-0000-0000-0000-000000000008")!,
+        // Research
+        arxiv: UUID(uuidString: "00000000-0000-0000-0000-000000000009")!,
+        hackernews: UUID(uuidString: "00000000-0000-0000-0000-00000000000A")!,
+        // Media
+        youtube: UUID(uuidString: "00000000-0000-0000-0000-00000000000B")!,
+        spotify: UUID(uuidString: "00000000-0000-0000-0000-00000000000C")!,
+        // Finance
+        bloomberg: UUID(uuidString: "00000000-0000-0000-0000-00000000000D")!,
+        coinbase: UUID(uuidString: "00000000-0000-0000-0000-00000000000E")!,
+        // Ungrouped
+        reddit: UUID(uuidString: "00000000-0000-0000-0000-00000000000F")!,
+        twitter: UUID(uuidString: "00000000-0000-0000-0000-000000000010")!,
+        weather: UUID(uuidString: "00000000-0000-0000-0000-000000000011")!
     )
 
     static var sample: Portal {
@@ -269,16 +282,29 @@ extension Portal {
 
     static var samples: [Portal] {
         [
-            Portal(id: sampleIDs.youtube, name: "YouTube", url: "https://www.youtube.com", type: .web, isPinned: true),
-            Portal(id: sampleIDs.claude, name: "Claude", url: "https://claude.ai", type: .web, isFavorite: true),
-            Portal(id: sampleIDs.chatgpt, name: "ChatGPT", url: "https://chat.openai.com", type: .web),
-            Portal(id: sampleIDs.gemini, name: "Gemini", url: "https://gemini.google.com", type: .web),
-            Portal(id: sampleIDs.grok, name: "Grok", url: "https://grok.x.ai", type: .web),
-            Portal(id: sampleIDs.xcom, name: "X", url: "https://x.com", type: .web),
-            Portal(id: sampleIDs.gmail, name: "Gmail", url: "https://mail.google.com", type: .web),
-            Portal(id: sampleIDs.googleDocs, name: "Google Docs", url: "https://docs.google.com", type: .web),
+            // Core Tools (will be in Dev constellation)
+            Portal(id: sampleIDs.claude, name: "Claude", url: "https://claude.ai", type: .web, isFavorite: true, isPinned: true),
             Portal(id: sampleIDs.github, name: "GitHub", url: "https://github.com", type: .web),
-            Portal(id: sampleIDs.notion, name: "Notion", url: "https://notion.so", type: .web)
+            Portal(id: sampleIDs.notion, name: "Notion", url: "https://notion.so", type: .web),
+            Portal(id: sampleIDs.figma, name: "Figma", url: "https://figma.com", type: .web),
+            Portal(id: sampleIDs.linear, name: "Linear", url: "https://linear.app", type: .web),
+            // Communication (will be in Comms constellation)
+            Portal(id: sampleIDs.slack, name: "Slack", url: "https://slack.com", type: .web),
+            Portal(id: sampleIDs.gmail, name: "Gmail", url: "https://mail.google.com", type: .web),
+            Portal(id: sampleIDs.calendar, name: "Calendar", url: "https://calendar.google.com", type: .web),
+            // Research (will be in Research constellation)
+            Portal(id: sampleIDs.arxiv, name: "arXiv", url: "https://arxiv.org", type: .web),
+            Portal(id: sampleIDs.hackernews, name: "Hacker News", url: "https://news.ycombinator.com", type: .web),
+            // Media (will be in Media constellation)
+            Portal(id: sampleIDs.youtube, name: "YouTube", url: "https://www.youtube.com", type: .web),
+            Portal(id: sampleIDs.spotify, name: "Spotify", url: "https://open.spotify.com", type: .web),
+            // Finance (will be in Finance constellation)
+            Portal(id: sampleIDs.bloomberg, name: "Bloomberg", url: "https://bloomberg.com", type: .web),
+            Portal(id: sampleIDs.coinbase, name: "Coinbase", url: "https://coinbase.com", type: .web),
+            // Ungrouped portals (not in any constellation)
+            Portal(id: sampleIDs.reddit, name: "Reddit", url: "https://reddit.com", type: .web),
+            Portal(id: sampleIDs.twitter, name: "X", url: "https://x.com", type: .web),
+            Portal(id: sampleIDs.weather, name: "Weather", url: "https://weather.com", type: .web)
         ]
     }
 }

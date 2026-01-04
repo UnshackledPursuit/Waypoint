@@ -16,6 +16,7 @@ struct PortalListView: View {
     @Environment(PortalManager.self) private var portalManager
     @Environment(ConstellationManager.self) private var constellationManager
     @Environment(NavigationState.self) private var navigationState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Onboarding toast state
     @State private var showFirstPortalToast = false
@@ -191,7 +192,7 @@ struct PortalListView: View {
                     UTType.item.identifier
                 ],
                 onTargetedChange: { targeted in
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
                         isDropTargeted = targeted
                     }
                 },
@@ -414,11 +415,11 @@ struct PortalListView: View {
 
             // Show feedback for existing portal
             quickPastePortalName = "Found: \(existingPortal.name)"
-            withAnimation {
+            withAnimation(reduceMotion ? .none : .default) {
                 showQuickPasteSuccess = true
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                withAnimation {
+                withAnimation(reduceMotion ? .none : .default) {
                     showQuickPasteSuccess = false
                 }
             }
@@ -435,12 +436,13 @@ struct PortalListView: View {
 
             print("📋 Quick Paste found existing: \(existingPortal.name)")
         } else if let portal = createPortalIfNeeded(from: validURL) {
+            HapticService.success()
             quickPastePortalName = portal.name
-            withAnimation {
+            withAnimation(reduceMotion ? .none : .default) {
                 showQuickPasteSuccess = true
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                withAnimation {
+                withAnimation(reduceMotion ? .none : .default) {
                     showQuickPasteSuccess = false
                 }
             }
@@ -488,11 +490,11 @@ struct PortalListView: View {
 
         if let portal = createPortalIfNeeded(from: validURL) {
             quickPastePortalName = portal.name
-            withAnimation {
+            withAnimation(reduceMotion ? .none : .default) {
                 showQuickPasteSuccess = true
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                withAnimation {
+                withAnimation(reduceMotion ? .none : .default) {
                     showQuickPasteSuccess = false
                 }
             }
@@ -535,15 +537,16 @@ struct PortalListView: View {
         }
 
         if !newPortals.isEmpty {
+            HapticService.success()
             portalManager.addMultiple(newPortals)
             registerCreatedPortal(newPortals.last, viaDrag: true)
 
             lastDropCount = newPortals.count
-            withAnimation {
+            withAnimation(reduceMotion ? .none : .default) {
                 showDropSuccess = true
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                withAnimation {
+                withAnimation(reduceMotion ? .none : .default) {
                     showDropSuccess = false
                 }
             }
@@ -552,6 +555,7 @@ struct PortalListView: View {
         }
 
         if newPortals.isEmpty, let duplicateID = duplicateIDs.first {
+            HapticService.warning()
             requestFocus(on: duplicateID)
 
             // Trigger favicon fetch for duplicate if it doesn't have one
@@ -610,7 +614,7 @@ struct PortalListView: View {
                 }
                 .onChange(of: focusRequestPortalID) { _, portalID in
                     guard let portalID else { return }
-                    withAnimation(.easeInOut(duration: 0.25)) {
+                    withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
                         proxy.scrollTo(portalID, anchor: .top)
                     }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -674,7 +678,8 @@ struct PortalListView: View {
                 .gesture(
                     LongPressGesture(minimumDuration: 0.5)
                         .onEnded { _ in
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            HapticService.lightImpact()
+                            withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
                                 expandedConstellationPortalID = nil
                                 microActionsPortalID = portal.id
                             }
@@ -694,7 +699,7 @@ struct PortalListView: View {
         #else
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
         #endif
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
+        .animation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
     }
 
     // MARK: - Grid Item (Multi-column)
@@ -714,7 +719,8 @@ struct PortalListView: View {
                 .gesture(
                     LongPressGesture(minimumDuration: 0.5)
                         .onEnded { _ in
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            HapticService.lightImpact()
+                            withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
                                 expandedConstellationPortalID = nil
                                 microActionsPortalID = portal.id
                             }
@@ -733,7 +739,7 @@ struct PortalListView: View {
         #else
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
         #endif
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
+        .animation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
     }
 
     // MARK: - Icon-Only Item (Smush Mode)
@@ -783,7 +789,7 @@ struct PortalListView: View {
         #else
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
         #endif
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
+        .animation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8), value: microActionsPortalID)
     }
 
     /// Get constellation color for a portal (first constellation it belongs to)
@@ -918,12 +924,13 @@ struct PortalListView: View {
     // MARK: - Feedback
 
     private func showAssignmentFeedback(_ constellationName: String) {
+        HapticService.success()
         assignedConstellationName = constellationName
-        withAnimation {
+        withAnimation(reduceMotion ? .none : .default) {
             showConstellationAssigned = true
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            withAnimation {
+            withAnimation(reduceMotion ? .none : .default) {
                 showConstellationAssigned = false
             }
         }
@@ -937,6 +944,9 @@ struct PortalListView: View {
             return
         }
 
+        // Haptic feedback for portal open
+        HapticService.lightImpact()
+
         // Open URL - system handles window placement
         #if os(visionOS) || os(iOS)
         UIApplication.shared.open(url) { success in
@@ -946,6 +956,7 @@ struct PortalListView: View {
                 print("🚀 Opened portal: \(portal.name)")
             } else {
                 print("❌ Failed to open portal: \(portal.name)")
+                HapticService.error()
                 showOpenFailedToast()
             }
         }
@@ -963,12 +974,12 @@ struct PortalListView: View {
 
     private func showOpenFailedToast(message: String = "Couldn't open. Check iCloud share permissions.") {
         openFailedMessage = message
-        withAnimation {
+        withAnimation(reduceMotion ? .none : .default) {
             showOpenFailed = true
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            withAnimation {
+            withAnimation(reduceMotion ? .none : .default) {
                 showOpenFailed = false
             }
         }
@@ -986,7 +997,7 @@ struct PortalListView: View {
         microActionsWorkItem?.cancel()
         microActionsWorkItem = nil
 
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
             microActionsPortalID = portalID
         }
         scheduleMicroActionsDismiss(for: portalID)
@@ -1009,7 +1020,7 @@ struct PortalListView: View {
         microActionsWorkItem?.cancel()
         microActionsWorkItem = nil
         expandedConstellationPortalID = nil
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
             microActionsPortalID = nil
         }
         if focusRequestPortalID == portalID {
@@ -1041,7 +1052,7 @@ struct PortalListView: View {
             OnboardingState.hasShownFirstPortalHint = true
             // Small delay to let the sheet dismiss first
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
                     showFirstPortalToast = true
                 }
             }
@@ -1060,7 +1071,7 @@ struct PortalListView: View {
 
             // Small delay to let the sheet dismiss first
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
                     showConstellationHint = true
                 }
             }
@@ -1115,7 +1126,7 @@ struct PortalListView: View {
             HStack(spacing: 12) {
                 // Constellation toggle button
                 Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
                         if expandedConstellationPortalID == portal.id {
                             // Closing picker - resume auto-dismiss
                             expandedConstellationPortalID = nil
@@ -1137,6 +1148,7 @@ struct PortalListView: View {
 
                 // Favorite button
                 Button {
+                    HapticService.success()
                     portalManager.togglePin(portal)
                     // Reset timer on interaction
                     scheduleMicroActionsDismiss(for: portal.id)
@@ -1163,6 +1175,7 @@ struct PortalListView: View {
 
                 // Delete button (neutral color)
                 Button {
+                    HapticService.mediumImpact()
                     dismissMicroActions(for: portal.id)
                     portalManager.delete(portal)
                 } label: {
@@ -1201,7 +1214,7 @@ struct PortalListView: View {
                 let isAssigned = constellation.portalIDs.contains(portal.id)
                 Button {
                     // Just toggle - don't dismiss, don't reset timer
-                    withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                    withAnimation(reduceMotion ? .none : .spring(response: 0.2, dampingFraction: 0.7)) {
                         if isAssigned {
                             constellationManager.removePortal(portal.id, from: constellation)
                         } else {
@@ -1610,6 +1623,7 @@ private let relativeFormatter: RelativeDateTimeFormatter = {
 private struct QuickAddPortalView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(PortalManager.self) private var portalManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let initialURL: String
     let onCancel: () -> Void
@@ -1696,14 +1710,14 @@ private struct QuickAddPortalView: View {
         VStack(spacing: 0) {
             // Pack header - tap to expand/collapse
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
                     if isExpanded {
                         expandedPack = nil
                     } else {
                         expandedPack = pack.id
                         // Auto-scroll to show expanded content
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation {
+                            withAnimation(reduceMotion ? .none : .default) {
                                 scrollProxy.scrollTo(pack.id, anchor: .top)
                             }
                         }

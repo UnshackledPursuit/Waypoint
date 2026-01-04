@@ -15,6 +15,7 @@ struct OnboardingToastView: View {
     let submessage: String
     var onDismiss: (() -> Void)? = nil
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isVisible = false
 
     var body: some View {
@@ -62,7 +63,7 @@ struct OnboardingToastView: View {
         .scaleEffect(isVisible ? 1.0 : 0.9)
         .opacity(isVisible ? 1.0 : 0.0)
         .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+            withAnimation(reduceMotion ? .none : .spring(response: 0.4, dampingFraction: 0.7)) {
                 isVisible = true
             }
             // Auto-dismiss after 6 seconds
@@ -73,7 +74,7 @@ struct OnboardingToastView: View {
     }
 
     private func dismiss() {
-        withAnimation(.easeOut(duration: 0.2)) {
+        withAnimation(reduceMotion ? .none : .easeOut(duration: 0.2)) {
             isVisible = false
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
@@ -89,6 +90,7 @@ struct ConstellationHintView: View {
     let constellationName: String
     var onDismiss: (() -> Void)? = nil
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isVisible = false
 
     var body: some View {
@@ -136,7 +138,7 @@ struct ConstellationHintView: View {
         .scaleEffect(isVisible ? 1.0 : 0.9)
         .opacity(isVisible ? 1.0 : 0.0)
         .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+            withAnimation(reduceMotion ? .none : .spring(response: 0.4, dampingFraction: 0.7)) {
                 isVisible = true
             }
             // Auto-dismiss after 6 seconds
@@ -147,7 +149,7 @@ struct ConstellationHintView: View {
     }
 
     private func dismiss() {
-        withAnimation(.easeOut(duration: 0.2)) {
+        withAnimation(reduceMotion ? .none : .easeOut(duration: 0.2)) {
             isVisible = false
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {

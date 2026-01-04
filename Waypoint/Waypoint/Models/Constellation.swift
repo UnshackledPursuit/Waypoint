@@ -54,59 +54,68 @@ struct Constellation: Identifiable, Codable, Hashable {
 extension Constellation {
     static var sample: Constellation {
         Constellation(
-            name: "AI Tools",
-            portalIDs: [Portal.sampleIDs.youtube, Portal.sampleIDs.claude],
-            icon: "sparkles",
-            colorHex: "#AF52DE"
+            name: "Dev",
+            portalIDs: [Portal.sampleIDs.claude, Portal.sampleIDs.github],
+            icon: "chevron.left.forwardslash.chevron.right",
+            colorHex: "#0A84FF"
         )
     }
 
     static var samples: [Constellation] {
         [
-            // AI Tools - YouTube + all AI assistants
-            Constellation(
-                name: "AI Tools",
-                portalIDs: [
-                    Portal.sampleIDs.youtube,
-                    Portal.sampleIDs.claude,
-                    Portal.sampleIDs.chatgpt,
-                    Portal.sampleIDs.gemini,
-                    Portal.sampleIDs.grok
-                ],
-                icon: "sparkles",
-                colorHex: "#AF52DE"  // Purple
-            ),
-            // Social - YouTube + X
-            Constellation(
-                name: "Social",
-                portalIDs: [
-                    Portal.sampleIDs.youtube,
-                    Portal.sampleIDs.xcom
-                ],
-                icon: "person.2.fill",
-                colorHex: "#FF2D55"  // Pink
-            ),
-            // Productivity - YouTube + work tools
-            Constellation(
-                name: "Productivity",
-                portalIDs: [
-                    Portal.sampleIDs.youtube,
-                    Portal.sampleIDs.gmail,
-                    Portal.sampleIDs.googleDocs,
-                    Portal.sampleIDs.notion
-                ],
-                icon: "briefcase.fill",
-                colorHex: "#007AFF"  // Blue
-            ),
-            // Dev - YouTube + GitHub
+            // Dev - Claude, GitHub, Figma, Linear, Notion
             Constellation(
                 name: "Dev",
                 portalIDs: [
-                    Portal.sampleIDs.youtube,
-                    Portal.sampleIDs.github
+                    Portal.sampleIDs.claude,
+                    Portal.sampleIDs.github,
+                    Portal.sampleIDs.figma,
+                    Portal.sampleIDs.linear,
+                    Portal.sampleIDs.notion
                 ],
                 icon: "chevron.left.forwardslash.chevron.right",
-                colorHex: "#34C759"  // Green
+                colorHex: "#0A84FF"  // Deep blue
+            ),
+            // Comms - Slack, Gmail, Calendar
+            Constellation(
+                name: "Comms",
+                portalIDs: [
+                    Portal.sampleIDs.slack,
+                    Portal.sampleIDs.gmail,
+                    Portal.sampleIDs.calendar
+                ],
+                icon: "bubble.left.and.bubble.right.fill",
+                colorHex: "#FF9500"  // Orange
+            ),
+            // Research - arXiv, Hacker News
+            Constellation(
+                name: "Research",
+                portalIDs: [
+                    Portal.sampleIDs.arxiv,
+                    Portal.sampleIDs.hackernews
+                ],
+                icon: "book.fill",
+                colorHex: "#30D5C8"  // Aqua/Teal
+            ),
+            // Media - YouTube, Spotify
+            Constellation(
+                name: "Media",
+                portalIDs: [
+                    Portal.sampleIDs.youtube,
+                    Portal.sampleIDs.spotify
+                ],
+                icon: "play.circle.fill",
+                colorHex: "#FFD60A"  // Yellow
+            ),
+            // Finance - Bloomberg, Coinbase
+            Constellation(
+                name: "Finance",
+                portalIDs: [
+                    Portal.sampleIDs.bloomberg,
+                    Portal.sampleIDs.coinbase
+                ],
+                icon: "chart.line.uptrend.xyaxis",
+                colorHex: "#1C1C1E"  // Near-black
             )
         ]
     }

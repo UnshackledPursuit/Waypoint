@@ -15,6 +15,7 @@ struct OrbContainerView: View {
     @Environment(PortalManager.self) private var portalManager
     @Environment(ConstellationManager.self) private var constellationManager
     @Environment(NavigationState.self) private var navigationState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var sceneState: OrbSceneState
     @State private var isDropTargeted = false
 
@@ -394,13 +395,13 @@ struct OrbContainerView: View {
     }
 
     private func expand() {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
             sceneState.isExpanded = true
         }
     }
 
     private func collapse() {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
             sceneState.isExpanded = false
         }
     }
@@ -413,12 +414,16 @@ struct OrbContainerView: View {
             return
         }
 
+        // Haptic feedback for portal open
+        HapticService.lightImpact()
+
         #if os(visionOS) || os(iOS)
         UIApplication.shared.open(url) { success in
             if success {
                 portalManager.updateLastOpened(portal)
                 print("🚀 Opened portal: \(portal.name)")
             } else {
+                HapticService.error()
                 print("❌ Failed to open portal: \(portal.name)")
             }
         }
@@ -426,6 +431,8 @@ struct OrbContainerView: View {
     }
 
     private func handleDroppedURLs(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        HapticService.success()
         for url in urls {
             createPortalIfNeeded(from: url)
         }

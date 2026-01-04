@@ -23,6 +23,7 @@ struct WaypointApp: App {
     @State private var constellationManager = ConstellationManager()
     @State private var navigationState = NavigationState()
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var orbSceneState = OrbSceneState()
     @State private var selectedTab: AppTab = .list
 
@@ -123,8 +124,8 @@ struct WaypointApp: App {
                     .transition(.scale.combined(with: .opacity))
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: shouldHideOrnaments)
-            .animation(.easeInOut(duration: 0.2), value: temporaryOrnamentReveal)
+            .animation(reduceMotion ? .none : .easeInOut(duration: 0.2), value: shouldHideOrnaments)
+            .animation(reduceMotion ? .none : .easeInOut(duration: 0.2), value: temporaryOrnamentReveal)
 #if os(visionOS)
             // Left ornament: Tab switching + quick actions (Paste/Add)
             // Visible when: has constellations AND (not in focus mode OR temporarily revealed)
@@ -319,13 +320,13 @@ struct WaypointApp: App {
         ornamentRevealWorkItem?.cancel()
 
         // Show ornaments
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
             temporaryOrnamentReveal = true
         }
 
         // Schedule auto-hide after 8 seconds
         let workItem = DispatchWorkItem { [self] in
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
                 temporaryOrnamentReveal = false
             }
         }
@@ -341,6 +342,7 @@ struct FocusModeRevealButton: View {
     let action: () -> Void
 
     @State private var isHovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: action) {
@@ -360,7 +362,7 @@ struct FocusModeRevealButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
