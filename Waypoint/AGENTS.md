@@ -28,7 +28,7 @@
 - **2-second rule:** User must be able to launch any portal in ~2 seconds.
 
 ## Current Status (Jan 2026)
-**Branch:** `main` (clean - no feature branches)
+**Branch:** `main` (after accessibility-polish merge)
 
 ### ✅ COMPLETE
 - Phase 1: Drag & Drop upgrade (provider-based)
@@ -59,6 +59,18 @@
   - Icon-only compact buttons with circular hover effects
   - Ungrouped filter option added
   - Constellation Color sort mode
+- **Accessibility Polish (Jan 3, 2026)**
+  - Reduced Motion support across all animated views
+  - HapticService (iOS-only, no-op on visionOS)
+  - Settings button eye gaze fix (.hoverEffect(.highlight))
+  - OrbStyleCatalog debug tool (comprehensive orb comparison)
+  - Sample data cleanup (17 portals, 5 constellations)
+
+### 🟡 IN PROGRESS
+
+#### Orb Appearance System
+User-selectable orb styles (Frosted/Glass/3D) with extensible architecture.
+See "Orb Appearance System" section below for full spec.
 
 ### 🔴 NEXT (Priority Order)
 
@@ -239,11 +251,7 @@ These are ideas for post-v1 consideration. Do not implement unless explicitly re
   - Tinted rim light (cyan/purple gradient)
   - ~80% achievable in SwiftUI; true 3D depth needs RealityKit
   - See Siri orb reference in visionOS for target aesthetic
-- **Appearance Options Toggle (v2):** User-selectable orb styles:
-  - Classic (current 7-layer)
-  - Liquid Glass (simpler, system-native)
-  - Prismatic (Siri-inspired multi-color)
-  - See `LiquidGlassOrbPreview.swift` for prototypes
+- **Appearance Options Toggle (v2):** ⬆️ PROMOTED - See "Orb Appearance System" section below
 - **Save Profile / Workspace Presets:** Allow users to save and restore portal/constellation setups
 - **Delete Constellation UI:** Add explicit delete option in constellation management
 - **Per-constellation layout overrides:** Allow users to override auto-layout per constellation
@@ -256,6 +264,90 @@ These are ideas for post-v1 consideration. Do not implement unless explicitly re
 - Quick Add keyboard missing voice/mic button (cosmetic)
 - RTFD duplicate portal creation from Notes drops (workaround: skip RTFD files)
 - **Duplicate link behavior inconsistent:** List view auto-scrolls to existing portal; Orb view does nothing (architectural - orbs are spatial, not scrollable). Needs unified feedback approach.
+
+---
+
+## Orb Appearance System (Jan 2026)
+
+### Overview
+User-selectable orb visual styles with extensible architecture for future enhancements (Liquid Glass, 3D shapes, etc.).
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    OrbMaterial (Visual Style)                │
+├──────────────┬──────────────┬──────────────┬────────────────┤
+│   .frosted   │    .glass    │    .threeD   │  .liquidGlass  │
+│   (default)  │ (Deep Glass) │   (Convex)   │   (future)     │
+└──────────────┴──────────────┴──────────────┴────────────────┘
+                              ×
+┌─────────────────────────────────────────────────────────────┐
+│                    OrbShape (Geometry)                       │
+├──────────────┬──────────────┬───────────────────────────────┤
+│   .circle    │ .roundedRect │     .cube (future 3D)         │
+│  (orb view)  │ (list/cards) │                               │
+└──────────────┴──────────────┴───────────────────────────────┘
+```
+
+### Material Styles
+
+| Material | Description | Use Case |
+|----------|-------------|----------|
+| **Frosted** (default) | `.regularMaterial` base, soft glow, blur effect | Primary style, visionOS native feel |
+| **Glass** | `.ultraThinMaterial`, strong specular, smooth 6-stop glow | Glassy/transparent aesthetic |
+| **3D** | Convex bubble, exaggerated highlights, deep shadows | Maximum depth/sphere effect |
+| **Liquid Glass** | visionOS 26 native (future) | System integration when available |
+
+### Shape Contexts
+
+| Shape | Context | Notes |
+|-------|---------|-------|
+| **Circle** | Orb view portals | Primary orb display |
+| **Circle (compact)** | Pack headers, menus | Uses Pack Header variant (smaller) |
+| **RoundedRect** | List view, compact view | Square icons, future density options |
+
+### Where Styles Apply
+
+| View Context | Material Applied | Shape | Notes |
+|--------------|------------------|-------|-------|
+| Orb View (portals) | User's choice | Circle | Frosted/Glass/3D |
+| Orb View (constellations) | Constellation style | Circle | Keep existing - looks great |
+| List View | Unchanged initially | RoundedRect | Already solid, square icons |
+| Menus/Sheets | Always Frosted | Circle/Compact | Consistent UI chrome |
+| Compact orbs | Pack Header variant | Circle | Small contexts |
+
+### Files
+
+```
+Models/
+  OrbAppearance.swift       ← Enums + UserDefaults storage
+
+Views/
+  Orbs/
+    UnifiedPortalOrbView.swift  ← Main style-switching component
+    OrbStyles.swift             ← Frosted, Glass, 3D renderers
+    CompactOrbView.swift        ← Pack Header for small contexts
+```
+
+### Settings Integration
+New "Appearance" section in Settings menu:
+- Orb Style picker: Frosted (default), Glass, 3D
+- Visual preview of each style
+- Stored in `@AppStorage("orbMaterial")`
+
+### Debug Tool
+`OrbStyleCatalog.swift` in debug menu provides:
+- All style variations side-by-side
+- Real favicon comparisons (AsyncImage)
+- Icon + favicon mixed views
+- Dark color handling tests
+
+### Future Extensibility
+- Add `.liquidGlass` material when visionOS 26 APIs available
+- Add `.cube` shape for RealityKit 3D exploration
+- Add `.prismatic` material for Siri-style multi-color orbs
+- Compact list view uses `.roundedRect` shape + user's material
 
 ---
 
